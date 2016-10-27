@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-namespace Utility {
+namespace BoxDash.Utility {
     public class Singleton<T> : MonoBehaviour
         where T : Component
     {
