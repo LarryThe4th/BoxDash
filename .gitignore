@@ -28,6 +28,14 @@ sysinfo.txt
 # Builds
 *.apk
 *.unitypackage
+*.png
+*.png.meta
+*.prefab
+*.prefab.meta
+*.ttf
+*.ttf.meta
+*.mat
+*.mat.meta
 
 # =========================
 # Operating System Files
