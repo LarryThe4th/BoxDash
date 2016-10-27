@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Linq;
 using Utility;
 
 namespace BoxDash.Map {
@@ -9,14 +10,22 @@ namespace BoxDash.Map {
     /// </summary>
     public class MapManager : Singleton<MapManager>
     {
-        #region Private variable
-        // ---------- Private variable ----------
-        private GameObject m_MapTilePrefab;
+        #region Private variables
+        // ---------- Private variables ----------
+        private GameObject m_MapTilePrefab = null;
+        private GameObject m_WallTilePrefab = null;
+        private Vector3 m_TileRotation = new Vector3(-90, 45, 0);
         private static readonly float m_TileLengthInHalf = 0.254f;
         // Calualate the diagonal line across the tile qube, as long as the
         // tile is a square, the diagonal line's lenght should be (2^2 * (length of side)). 
         private static readonly float m_TileOffset = Mathf.Sqrt(2) * m_TileLengthInHalf;
+        private int m_MaxNumberOfTilesOnRow = 5;
+        #endregion
 
+        #region Public varibales
+        // ---------- Public varibales -----------
+        [Tooltip("The main there color of the whole map.")]
+        public Color32 MapThemeColor = Color.white;
         #endregion
 
         #region Private methods
@@ -25,23 +34,84 @@ namespace BoxDash.Map {
         /// </summary>
         private void Start() {
             LoadGameResource("Tile_white", out m_MapTilePrefab);
-
+            LoadGameResource("Wall_white", out m_WallTilePrefab);
             CreateMap();
         }
 
         private void CreateMap() {
-            Vector3 rotation = new Vector3(-90, 45, 0);
+#if UNITY_EDITOR
+            if (!m_MapTilePrefab || !m_WallTilePrefab) {
+                Debug.Log("Tile prefab is null.");
+                return;
+            }
+#endif
+            CreateTilesOnEvenRow(m_MaxNumberOfTilesOnRow);
+            CreateTilesOnOddRow(m_MaxNumberOfTilesOnRow - 1);
+        }
+
+        private void CreateTilesOnEvenRow(int numberOfTilesOnColumn) {
             for (int rowIndex = 0; rowIndex < 10; rowIndex++)
             {
-                for (int columnIndex = 0; columnIndex < 5; columnIndex++)
+                for (int columnIndex = 0; columnIndex < numberOfTilesOnColumn; columnIndex++)
                 {
-                    GameObject tile =Instantiate(
-                        m_MapTilePrefab, 
-                        new Vector3(columnIndex * m_TileOffset, 0, rowIndex * m_TileOffset), 
-                        Quaternion.Euler(rotation)) as GameObject;
+                    // Instantiate a new tile with position and rotatoin settings.
+                    GameObject tile = Instantiate(
+                        (columnIndex == 0 || columnIndex == (numberOfTilesOnColumn - 1)) ? m_WallTilePrefab : m_MapTilePrefab,
+                        new Vector3(columnIndex * m_TileOffset, 0, rowIndex * m_TileOffset),
+                        Quaternion.Euler(m_TileRotation)) as GameObject;
+
+                    // Note: if using MeshRenderer but not Renderer, the color setting will affect
+                    // on all the GameObjects which shares this same material.
+                    foreach (var render in tile.GetComponentsInChildren<Renderer>())
+                    {
+                        render.material.color = MapThemeColor;
+                    }
+
                     tile.transform.SetParent(this.transform);
                 }
             }
+        }
+
+        private void CreateTilesOnOddRow(int numberOfTilesOnColumn)
+        {
+            // Get a lighter color for the tiles.
+            Color32 secondlyColor = LighterColor(0.1f, MapThemeColor);
+            for (int rowIndex = 0; rowIndex < 10; rowIndex++)
+            {
+                for (int columnIndex = 0; columnIndex < numberOfTilesOnColumn; columnIndex++)
+                {
+                    // Instantiate a new tile with position and rotatoin settings.
+                    GameObject tile = Instantiate(
+                        m_MapTilePrefab,
+                        new Vector3(columnIndex * m_TileOffset + (m_TileOffset / 2), 0, rowIndex * m_TileOffset + (m_TileOffset / 2)),
+                        Quaternion.Euler(m_TileRotation)) as GameObject;
+                    // Note: if using MeshRenderer but not Renderer, the color setting will affect
+                    // on all the GameObjects which shares this same material.
+                    foreach (var render in tile.GetComponentsInChildren<Renderer>())
+                    {
+                        render.material.color = secondlyColor;
+                    }
+                    tile.transform.SetParent(this.transform);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Generate a lighter color based on the base color.
+        /// </summary>
+        /// <param name="whitelessFactor">How much ligter you want (From 0.1 to 1).</param>
+        /// <param name="baseColor"></param>
+        /// <returns>If passed in whitelessFactor is less then 0.1 or greater than 1, return the baseColor.</returns>
+        private Color32 LighterColor(float whitelessFactor, Color32 baseColor) {
+            if (whitelessFactor < 0.1 || whitelessFactor > 1) {
+                return baseColor;
+            }
+            return new Color32(
+                (byte)((255 - baseColor.r) * whitelessFactor + baseColor.r),
+                (byte)((255 - baseColor.g) * whitelessFactor + baseColor.g),
+                (byte)((255 - baseColor.b) * whitelessFactor + baseColor.b),
+                baseColor.a
+            );
         }
 
         /// <summary>
