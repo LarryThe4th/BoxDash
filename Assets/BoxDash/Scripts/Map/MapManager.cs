@@ -1,20 +1,32 @@
 ﻿using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using BoxDash.Utility;
+using System;
 
 namespace BoxDash.Map {
     public class MapChunk {
         public Transform Root;
-        public List<List<MapTile>> m_MapList = new List<List<MapTile>>();
+        public List<List<MapTile>> MapList = new List<List<MapTile>>();
 
         public MapTile GetTile(int row, int column)
         {
             if (row < 0 && column < 0) return null;
-            return m_MapList[row][column];
+            return MapList[row][column];
         }
 
         public void AddRowOfTiles(int row, List<MapTile> tiles) {
-            m_MapList.Add(new List<MapTile>(tiles));
+            MapList.Add(new List<MapTile>(tiles));
+        }
+
+        public void ResetTiles() {
+            foreach (var rows in MapList)
+            {
+                foreach (var tiles in rows)
+                {
+                    tiles.ResetTile();
+                }
+            }
         }
     }
 
@@ -25,16 +37,17 @@ namespace BoxDash.Map {
     public class MapManager : Singleton<MapManager>
     {
         #region Delegate and Events
-        public delegate void PlayerMovedOnMap(int playerAtRow, int playerAtColumn);
-        public static PlayerMovedOnMap PlayerMovedOnMapEvent;
-
         private void OnEnable()
         {
-            PlayerMovedOnMapEvent += PlayerPositionUpdated;
+            GameManager.PlayerMovedOnMapEvent += PlayerPositionUpdated;
+            GameManager.GameStartEvent += OnMapStartCollpase;
+            GameManager.GameOverEvent += OnGameOverd;
         }
 
         private void OnDisable() {
-            PlayerMovedOnMapEvent -= PlayerPositionUpdated;
+            GameManager.PlayerMovedOnMapEvent -= PlayerPositionUpdated;
+            GameManager.GameStartEvent -= OnMapStartCollpase;
+            GameManager.GameOverEvent -= OnGameOverd;
         }
         #endregion
 
@@ -92,7 +105,6 @@ namespace BoxDash.Map {
                 // Change its name for easies bugging in editor.
                 chunkRoot.name = "MapChunkRoot " + chunkIndex;
 #endif
-
                 // Create a new chunk for store all the map tile data.
                 MapChunk chunk = new MapChunk();
                 // Notice that each loop creates two rows of tiles.
@@ -135,6 +147,9 @@ namespace BoxDash.Map {
                 // Get the map tile script.
                 MapTile mapTile = tile.GetComponent<MapTile>();
 
+                // Remenber the local position, use it when reseting the tiles.
+                mapTile.OriginalLocalPosition = tile.transform.localPosition;
+
                 // Note: if using MeshRenderer but not Renderer, the color setting will affect
                 // on all the GameObjects which shares this same material.
                 foreach (var render in tile.GetComponentsInChildren<Renderer>())
@@ -143,7 +158,7 @@ namespace BoxDash.Map {
                     render.material.color =
                         (columnIndex == 0 || columnIndex == (numberOfTilesOnColumn - 1)) ? wallColor : tileColor;
                     // Remenber its original color, it will comes in handy when the map reset itself.
-                    mapTile.UpperMeshColor = render.material.color;
+                    mapTile.OriginalUpperMeshColor = render.material.color;
                 }
                 // Reset it parent transform so when we want to move this chunk of tiles we only
                 // need to move this parent object.
@@ -186,9 +201,11 @@ namespace BoxDash.Map {
                 {
                     // Like befer, Since the even rows wont have a wall, set the normal color.
                     render.material.color = secondlyColor;
-                    mapTile.UpperMeshColor = render.material.color;
+                    mapTile.OriginalUpperMeshColor = render.material.color;
                 }
                 tile.transform.SetParent(root);
+                // Remenber the local position, use it when reseting the tiles.
+                mapTile.OriginalLocalPosition = tile.transform.localPosition;
 #if UNITY_EDITOR
                 tile.name = "Even [ " + (rowIndex * 2 + 1) + ", " + columnIndex + " ]";
 #endif
@@ -227,7 +244,7 @@ namespace BoxDash.Map {
                 if ((playerPositionOnY + LengthOfMapChunk) % (LengthOfMapChunk * 2) == 0)
                 {
                     // This means that player is now standing on the half of the map chunk
-                    ResetMapChunkPosition(playerPositionOnY);
+                    ResetMapChunk(playerPositionOnY);
                 }
             }
         }
@@ -238,7 +255,7 @@ namespace BoxDash.Map {
                 playerAtRow % 2 != 0 ? color.ChangeColorBrightness(-0.3f) : color;
         }
 
-        private void ResetMapChunkPosition(int playerAtRow)
+        private void ResetMapChunk(int playerAtRow)
         {
             // First get the logical index (AKA. the N.th map chunk player has passed) of the map chunk.
             int currentAtIndex = playerAtRow / (LengthOfMapChunk * 2);
@@ -260,15 +277,41 @@ namespace BoxDash.Map {
         /// </summary>
         private void ResetMapChunkContent(int mapChunkIndexInList)
         {
-            for (int row = 0; row < m_MapChunkList[mapChunkIndexInList].m_MapList.Count; row++)
-            {
-                for (int column = 0; column < m_MapChunkList[mapChunkIndexInList].m_MapList[row].Count; column++)
+            m_MapChunkList[mapChunkIndexInList].ResetTiles();
+        }
+
+        private void OnMapStartCollpase() {
+            StartCoroutine(TileCollpase());
+        }
+
+        int m_CollapseRow = 0;
+        int m_CollapseMapChunk = 0;
+        private IEnumerator TileCollpase() {
+            while (true) {
+                yield return new WaitForSeconds(0.2f);
+                // If current map chunk has not been reseted by player passing the reset point, 
+                // trigger the tiles to collapse.
+                // The reasome for doing this check is becuase some time the player go too fast,
+                // and the map chunk is not yet fully collapse befer reset to new location, after
+                // reset to the new location some of the tiles will keep been triggerd by this loop.
+                foreach (var tile in m_MapChunkList[m_CollapseMapChunk].MapList[m_CollapseRow++])
                 {
-                    // Reset its color so that the player's trace now gone.
-                    m_MapChunkList[mapChunkIndexInList].m_MapList[row][column].UpperMesh.material.color =
-                        m_MapChunkList[mapChunkIndexInList].m_MapList[row][column].UpperMeshColor;
+                    tile.StartCollapse();
+                }
+                // If a map chunk is fully collpased.
+                if (m_CollapseRow == LengthOfMapChunk * 2) {
+                    m_CollapseMapChunk++;
+                    m_CollapseMapChunk = m_CollapseMapChunk % NumberOfMapChunk;
+                    m_CollapseRow = 0;
                 }
             }
+        }
+
+        private void OnGameOverd()
+        {
+            // Stop tile from collapsing.
+            StopCoroutine(TileCollpase());
+            Debug.Log("game over");
         }
         #endregion
 
@@ -284,8 +327,6 @@ namespace BoxDash.Map {
             // and the the player at column will always between 0 and maximun number of tiles in a row.
             return m_MapChunkList[(playerAtRow / (LengthOfMapChunk * 2)) % NumberOfMapChunk].GetTile(playerAtRow % (LengthOfMapChunk * 2), playerAtColumn);
         }
-
-
         #endregion
     }
 }

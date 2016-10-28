@@ -7,17 +7,14 @@ namespace BoxDash.SceneCamera {
     public class CameraController : Singleton<CameraController>
     {
         #region Events
-        public delegate void PlayerMovedInWorldSpace(Vector3 position);
-        public static PlayerMovedInWorldSpace PlayerMovedInWorldSpaceEvent;
-
         private void OnEnable()
         {
-            PlayerMovedInWorldSpaceEvent += UpdateCameraDesireLocation;
+            GameManager.PlayerMovedInWorldSpaceEvent += UpdateCameraDesireLocation;
         }
 
         private void OnDisable()
         {
-            PlayerMovedInWorldSpaceEvent -= UpdateCameraDesireLocation;
+            GameManager.PlayerMovedInWorldSpaceEvent -= UpdateCameraDesireLocation;
         }
         #endregion
 
