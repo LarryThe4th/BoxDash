@@ -5,6 +5,12 @@ using BoxDash.Utility;
 using BoxDash.SceneCamera;
 
 namespace BoxDash {
+
+    public enum CauseOfGameOver {
+        OnCollapsedTile = 0,
+        FallInHole
+    }
+
     /// <summary>
     /// The root class of the whole game.
     /// </summary>
@@ -23,10 +29,11 @@ namespace BoxDash {
             if (GameStartEvent != null) GameStartEvent();
         }
 
-        public static OnEvent GameOverEvent;
-        public static void OnGameOver()
+        public delegate void GameOver(CauseOfGameOver cause);
+        public static GameOver GameOverEvent;
+        public static void OnGameOver(CauseOfGameOver cause)
         {
-            if (GameOverEvent != null) GameOverEvent();
+            if (GameOverEvent != null) GameOverEvent(cause);
         }
 
         public static void OnPlayerMoved(int playerAtRow, int playerAtColumn, Vector3 position)
@@ -36,11 +43,12 @@ namespace BoxDash {
         }
         #endregion
 
-
         #region Public varibales
         public static readonly float TileSideLength = 0.254f;
         public static readonly float TileOffset = Mathf.Sqrt(2) * GameManager.TileSideLength;
         public static readonly Vector3 TileRotation = new Vector3(-90, 45, 0);
+
+        public static PlayerBoxController Player;
         #endregion
 
         // Use this for initialization
@@ -52,7 +60,8 @@ namespace BoxDash {
             CameraController.Instance.Init();
 
             // Initialize the player object.
-            CreateCharacter();
+            Player = CreateCharacter();
+            Player.Init(3, 6, Quaternion.Euler(TileRotation));
         }
 
         private PlayerBoxController CreateCharacter() {
@@ -66,7 +75,7 @@ namespace BoxDash {
                 Vector3.zero,
                 Quaternion.identity) as GameObject;
 
-            player.GetComponent<PlayerBoxController>().Init(3, 6, Quaternion.Euler(TileRotation));
+            player.GetComponent<PlayerBoxController>();
             return player.GetComponent<PlayerBoxController>();
         }
     }

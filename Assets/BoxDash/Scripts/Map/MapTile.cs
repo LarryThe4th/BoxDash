@@ -3,6 +3,13 @@ using System.Collections;
 using Random = UnityEngine.Random;
 
 namespace BoxDash.Map {
+    public enum TileTypes {
+        Floor = 0,
+        Wall = 1,
+        Hole,
+        Spik,
+    }
+
     [RequireComponent(typeof(Rigidbody))]
     public class MapTile : MonoBehaviour
     {
@@ -10,21 +17,38 @@ namespace BoxDash.Map {
         public Color32 OriginalUpperMeshColor;
         public Vector3 OriginalLocalPosition;
 
-        private Rigidbody m_RigidBody;
+        public TileTypes GetTileType {
+            get { return m_TileType; }
+        }
+        private TileTypes m_TileType = TileTypes.Floor;
 
+        private Rigidbody m_RigidBody;
         private Renderer[] renders;
 
         public bool IsCollapsed {
             get; private set;
         }
 
-        private void Start() {
+        public void Init(TileTypes tileType) {
             IsCollapsed = false;
-
             m_RigidBody = GetComponent<Rigidbody>();
             m_RigidBody.useGravity = false;
-
             renders = GetComponentsInChildren<Renderer>();
+            m_TileType = tileType;
+        }
+
+        private void SetType(TileTypes tileType) {
+            // Only the wall will not change.
+            if (m_TileType == TileTypes.Wall) return;
+            m_TileType = tileType;
+            switch (tileType) {
+                case TileTypes.Floor:
+                    DisplayTile(true);
+                    break;
+                case TileTypes.Hole:
+                    DisplayTile(false);
+                    break;
+            }
         }
 
         private void ResetRigidBody()
@@ -34,7 +58,7 @@ namespace BoxDash.Map {
             m_RigidBody.angularVelocity = Vector3.zero;
         }
 
-        public void ResetTile() {
+        public void ResetTile(TileTypes newTileType) {
             // StopCoroutine(HideTile());
             IsCollapsed = false;
             // Reset the rigid body so it wont fall down anymore.
@@ -45,10 +69,11 @@ namespace BoxDash.Map {
             // Reset its color.
             UpperMesh.material.color = OriginalUpperMeshColor;
             // Show the tile again.
-            DisplayTile(true);
+            SetType(newTileType);
         }
 
-        private void DisplayTile(bool display) {
+        public void DisplayTile(bool display) {
+            if (m_TileType == TileTypes.Wall) return;
             foreach (var item in renders)
             {
                 item.enabled = display;
@@ -63,21 +88,20 @@ namespace BoxDash.Map {
                 Random.Range(0.0f, 1.0f), 
                 Random.Range(0.0f, 1.0f)) * (Random.Range(1, 10));
 
-            // StartCoroutine(HideTile());
+            // StartCoroutine(ResetTilePosition());
         }
 
-        /// <summary>
-        /// After collapsed, the tile will hide it self.
-        /// </summary>
-        private IEnumerator HideTile() {
+        private IEnumerator ResetTilePosition() {
             yield return new WaitForSeconds(1f);
-            // Disable the renderer conpomenet.
-            foreach (var item in renders)
-            {
-                DisplayTile(false);
-            }
             // Reset the rigid body so it wont fall down anymore.
             ResetRigidBody();
+            // Reset its position.
+            this.transform.localPosition = OriginalLocalPosition;
+            this.transform.rotation = Quaternion.Euler(GameManager.TileRotation);
+            // Reset its color.
+            UpperMesh.material.color = OriginalUpperMeshColor;
+            DisplayTile(false);
         }
+
     }
 }

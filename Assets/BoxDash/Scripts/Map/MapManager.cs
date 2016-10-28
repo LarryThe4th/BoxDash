@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using BoxDash.Utility;
-using System;
+using Random = UnityEngine.Random;
 
 namespace BoxDash.Map {
     public class MapChunk {
@@ -24,9 +24,12 @@ namespace BoxDash.Map {
             {
                 foreach (var tiles in rows)
                 {
-                    tiles.ResetTile();
+                    tiles.ResetTile(MapManager.Instance.GenerateObstacles());
                 }
+                // At lease one tile is safty for passing.
+                rows[Random.Range(1, MapManager.MaxNumberOfTilesOnRow - 2)].ResetTile(TileTypes.Floor);
             }
+
         }
     }
 
@@ -41,13 +44,13 @@ namespace BoxDash.Map {
         {
             GameManager.PlayerMovedOnMapEvent += PlayerPositionUpdated;
             GameManager.GameStartEvent += OnMapStartCollpase;
-            GameManager.GameOverEvent += OnGameOverd;
+            GameManager.GameOverEvent += OnGameOver;
         }
 
         private void OnDisable() {
             GameManager.PlayerMovedOnMapEvent -= PlayerPositionUpdated;
             GameManager.GameStartEvent -= OnMapStartCollpase;
-            GameManager.GameOverEvent -= OnGameOverd;
+            GameManager.GameOverEvent -= OnGameOver;
         }
         #endregion
 
@@ -70,6 +73,15 @@ namespace BoxDash.Map {
         // tile is a square, the diagonal line's lenght should be (2^2 * (length of side)). 
         private static readonly float m_MapChunkOffset = LengthOfMapChunk * GameManager.TileOffset;
         private List<MapChunk> m_MapChunkList = new List<MapChunk>();
+
+        private float m_CollapseSpeed = 0.1f;
+        private int m_CollapsedRow = 0;
+        private int m_CollapsingMapChunk = 0;
+        private int m_TotalCollapedRowCount = 0;
+        private bool m_KeepCollapsing = false;
+
+        private int m_ChanceOfHole = 5;
+        // private int m_ChanceOfSpike = 0;
         #endregion
 
         #region Private methods
@@ -125,6 +137,9 @@ namespace BoxDash.Map {
                 // Add all the datachunkRoot into the chunk.
                 m_MapChunkList.Add(chunk);
             }
+
+            // Reset the last created map chunk so there migth be obstacles on it.
+            m_MapChunkList[m_MapChunkList.Count - 1].ResetTiles();
         }
 
         /// <summary>
@@ -133,12 +148,14 @@ namespace BoxDash.Map {
         /// <param name="numberOfTilesOnColumn">The number of tiles on column.</param>
         private List<MapTile> CreateTilesOnOddRow(Transform root, Color32 tileColor, Color32 wallColor, int rowIndex, int numberOfTilesOnColumn) {
             List<MapTile> column = new List<MapTile>();
+            bool isWall = false;
             for (int columnIndex = 0; columnIndex < numberOfTilesOnColumn; columnIndex++)
             {
+                isWall = (columnIndex == 0 || columnIndex == (numberOfTilesOnColumn - 1)) ? true : false;
                 // Instantiate a new tile with position and rotatoin settings.
                 GameObject tile = Instantiate(
                     // If current index is at the most left side of the map or most right side of the map, then its a wall.
-                    (columnIndex == 0 || columnIndex == (numberOfTilesOnColumn - 1)) ? m_WallTilePrefab : m_MapTilePrefab,
+                    isWall ? m_WallTilePrefab : m_MapTilePrefab,
                     // Set the tile position with offset.
                     new Vector3(columnIndex * GameManager.TileOffset, 0, rowIndex * GameManager.TileOffset),
                     // Change its rotation so it can facing the correct direction.
@@ -146,6 +163,8 @@ namespace BoxDash.Map {
 
                 // Get the map tile script.
                 MapTile mapTile = tile.GetComponent<MapTile>();
+
+                mapTile.Init(isWall ? TileTypes.Wall : TileTypes.Floor);
 
                 // Remenber the local position, use it when reseting the tiles.
                 mapTile.OriginalLocalPosition = tile.transform.localPosition;
@@ -194,6 +213,8 @@ namespace BoxDash.Map {
                     Quaternion.Euler(GameManager.TileRotation)) as GameObject;
 
                 MapTile mapTile = tile.GetComponent<MapTile>();
+
+                mapTile.Init(TileTypes.Floor);
 
                 // Note: if using MeshRenderer but not Renderer, the color setting will affect
                 // on all the GameObjects which shares this same material.
@@ -278,40 +299,68 @@ namespace BoxDash.Map {
         private void ResetMapChunkContent(int mapChunkIndexInList)
         {
             m_MapChunkList[mapChunkIndexInList].ResetTiles();
+
+            // Everytime the map chunk been reseted, obstacles 
+            // will have a higher chance to be generate. 
+            AddObstaclesGenerateChance();
         }
 
         private void OnMapStartCollpase() {
+            m_KeepCollapsing = true;
             StartCoroutine(TileCollpase());
         }
 
-        int m_CollapseRow = 0;
-        int m_CollapseMapChunk = 0;
         private IEnumerator TileCollpase() {
-            while (true) {
-                yield return new WaitForSeconds(0.2f);
+            while (m_KeepCollapsing) {
+                m_TotalCollapedRowCount = m_CollapsedRow + (LengthOfMapChunk * 2 * m_CollapsingMapChunk);
+
+                if (GameManager.Player.PlayerOnY - m_TotalCollapedRowCount <= 5)
+                    m_CollapseSpeed = 0.18f;
+                else
+                    m_CollapseSpeed = 0.12f;
+
+
+                yield return new WaitForSeconds(m_CollapseSpeed);
                 // If current map chunk has not been reseted by player passing the reset point, 
                 // trigger the tiles to collapse.
                 // The reasome for doing this check is becuase some time the player go too fast,
                 // and the map chunk is not yet fully collapse befer reset to new location, after
                 // reset to the new location some of the tiles will keep been triggerd by this loop.
-                foreach (var tile in m_MapChunkList[m_CollapseMapChunk].MapList[m_CollapseRow++])
+                foreach (var tile in m_MapChunkList[m_CollapsingMapChunk].MapList[m_CollapsedRow])
                 {
                     tile.StartCollapse();
+                    // Check if player is standing on the collapsed tile.
+                    if (GameManager.Player.PlayerOnY <= m_TotalCollapedRowCount) {
+                        // Hide the tile right under the player box so user can clear see how it falls.
+                        m_MapChunkList[m_CollapsingMapChunk].MapList[m_CollapsedRow][GameManager.Player.PlayerOnX].DisplayTile(false);
+
+                        GameManager.OnGameOver(CauseOfGameOver.OnCollapsedTile);
+                        yield return null;
+                    }
                 }
+
+                m_CollapsedRow++;
+
                 // If a map chunk is fully collpased.
-                if (m_CollapseRow == LengthOfMapChunk * 2) {
-                    m_CollapseMapChunk++;
-                    m_CollapseMapChunk = m_CollapseMapChunk % NumberOfMapChunk;
-                    m_CollapseRow = 0;
+                if (m_CollapsedRow == LengthOfMapChunk * 2) {
+                    // Reset its state.
+                    m_CollapsingMapChunk++;
+                    m_CollapsingMapChunk = m_CollapsingMapChunk % NumberOfMapChunk;
+                    m_CollapsedRow = 0;
                 }
             }
         }
 
-        private void OnGameOverd()
+        private void AddObstaclesGenerateChance() {
+            m_ChanceOfHole += 2;
+            if (m_ChanceOfHole >= 20) m_ChanceOfHole = 20;
+        }
+
+        private void OnGameOver(CauseOfGameOver cause)
         {
             // Stop tile from collapsing.
+            m_KeepCollapsing = false;
             StopCoroutine(TileCollpase());
-            Debug.Log("game over");
         }
         #endregion
 
@@ -326,6 +375,15 @@ namespace BoxDash.Map {
             // The index of the rows will always clamp betweem 0 and the length of per-chunk,
             // and the the player at column will always between 0 and maximun number of tiles in a row.
             return m_MapChunkList[(playerAtRow / (LengthOfMapChunk * 2)) % NumberOfMapChunk].GetTile(playerAtRow % (LengthOfMapChunk * 2), playerAtColumn);
+        }
+
+        public TileTypes GenerateObstacles()
+        {
+            int randomResult = Random.Range(0, 100);
+            if (m_ChanceOfHole > randomResult) {
+                return TileTypes.Hole;
+            }
+            return TileTypes.Floor;
         }
         #endregion
     }

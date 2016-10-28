@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using BoxDash.Map;
+using Random = UnityEngine.Random;
 
 namespace BoxDash.Player {
     /// <summary>
@@ -8,6 +9,29 @@ namespace BoxDash.Player {
     [RequireComponent(typeof(Rigidbody))]
     public class PlayerBoxController : MonoBehaviour
     {
+        #region Delegate and Events
+        private void OnEnable()
+        {
+            GameManager.GameOverEvent += OnGameOver;
+        }
+
+        private void OnDisable()
+        {
+            GameManager.GameOverEvent -= OnGameOver;
+        }
+        #endregion
+
+        #region Public variables
+        // ---------- Public variables ------------
+        public int PlayerOnY {
+            get;private set;
+        }
+        public int PlayerOnX
+        {
+            get; private set;
+        }
+        #endregion
+
         #region Private variables
         private enum MoveDirection {
             UpperLeft = 0,
@@ -15,29 +39,22 @@ namespace BoxDash.Player {
         }
 
         private Rigidbody m_RigidBody;
-
-        // Keep tracking where the player is standing.
-        private int m_PlayerOnY = 0;
-        private int m_PlayerOnX = 0;
-
         private bool m_PlayerCanControl = false;
         #endregion
 
-        // public Vector3 
-
         public void Init(int onRow, int onColumn, Quaternion rotation) {
-            m_PlayerOnY = onColumn;
-            m_PlayerOnX = onRow;
+            PlayerOnY = onColumn;
+            PlayerOnX = onRow;
 
             m_RigidBody = GetComponent<Rigidbody>();
             m_RigidBody.useGravity = false;
             m_RigidBody.velocity = Vector3.zero;
 
-            SetPlayerLocation(m_PlayerOnY, m_PlayerOnX);
+            SetPlayerLocation(PlayerOnY, PlayerOnX);
 
             this.transform.rotation = rotation;
 
-            GameManager.OnPlayerMoved(m_PlayerOnY, m_PlayerOnX, this.transform.position);
+            GameManager.OnPlayerMoved(PlayerOnY, PlayerOnX, this.transform.position);
 
             // Temp
             GameManager.OnGameStart();
@@ -51,38 +68,38 @@ namespace BoxDash.Player {
                     for (int i = 0; i < unit; i++)
                     {
                         // Reach the left map border.
-                        if (m_PlayerOnY % 2 != 0 && m_PlayerOnX == 0) break;
+                        if (PlayerOnY % 2 != 0 && PlayerOnX == 0) break;
                         // Loop the index between 0 and LengthOfMapChunk * NumberOfMapChunk.
-                        if (m_PlayerOnY % 2 != 0)
+                        if (PlayerOnY % 2 != 0)
                         {
-                            SetPlayerLocation(++m_PlayerOnY, m_PlayerOnX);
+                            SetPlayerLocation(++PlayerOnY, PlayerOnX);
                         }
                         else {
-                            SetPlayerLocation(++m_PlayerOnY, --m_PlayerOnX);
+                            SetPlayerLocation(++PlayerOnY, --PlayerOnX);
                         }
                         // Check if the map needs update.
-                        GameManager.OnPlayerMoved(m_PlayerOnY, m_PlayerOnX, this.transform.position);
+                        GameManager.OnPlayerMoved(PlayerOnY, PlayerOnX, this.transform.position);
                     } 
                     break;
                 case MoveDirection.UpperRight:
                     for (int i = 0; i < unit; i++)
                     {
                         // Reach the right map border.  
-                        if (m_PlayerOnY % 2 != 0 && m_PlayerOnX == MapManager.MaxNumberOfTilesOnRow - 2) break;
+                        if (PlayerOnY % 2 != 0 && PlayerOnX == MapManager.MaxNumberOfTilesOnRow - 2) break;
                         // Loop the index between 0 and LengthOfMapChunk * NumberOfMapChunk.
-                        if (m_PlayerOnY % 2 != 0) {
-                            SetPlayerLocation(++m_PlayerOnY, ++m_PlayerOnX);
+                        if (PlayerOnY % 2 != 0) {
+                            SetPlayerLocation(++PlayerOnY, ++PlayerOnX);
                         }
                         else {
-                            SetPlayerLocation(++m_PlayerOnY, m_PlayerOnX);
+                            SetPlayerLocation(++PlayerOnY, PlayerOnX);
                         }
                         // Check if the map needs update.
-                        GameManager.OnPlayerMoved(m_PlayerOnY, m_PlayerOnX, this.transform.position);
+                        GameManager.OnPlayerMoved(PlayerOnY, PlayerOnX, this.transform.position);
                     }
                     break;
                 default:
                     // No way this will get call...
-                    SetPlayerLocation(m_PlayerOnY, m_PlayerOnX);
+                    SetPlayerLocation(PlayerOnY, PlayerOnX);
                     break;
             }
         }
@@ -94,10 +111,34 @@ namespace BoxDash.Player {
             // this.transform.position = MapManager.Instance.GetTile(locationX, locationY).transform.position;
             // Lift it up to the ground.
             this.transform.position += new Vector3(0, GameManager.TileSideLength / 2, 0);
+
+            // Whops
+            if (currentTile.GetTileType == TileTypes.Hole) {
+                GameManager.OnGameOver(CauseOfGameOver.FallInHole);
+            }
         }
 
-        private void OnGameOvered() {
-            m_RigidBody.useGravity = true;
+        private void OnGameOver(CauseOfGameOver cause) {
+            switch (cause)
+            {
+                case CauseOfGameOver.OnCollapsedTile:
+                    m_PlayerCanControl = false;
+                    m_RigidBody.useGravity = true;
+                    m_RigidBody.angularVelocity = new Vector3(
+                        Random.Range(0.0f, 1.0f),
+                        Random.Range(0.0f, 1.0f),
+                        Random.Range(0.0f, 1.0f)) * (Random.Range(1, 10));
+                    break;
+                case CauseOfGameOver.FallInHole:
+                    m_PlayerCanControl = false;
+                    m_RigidBody.useGravity = true;
+                    break;
+                default:
+                    m_PlayerCanControl = false;
+                    break;
+            }
+
+
         }
 
         private void Update()
