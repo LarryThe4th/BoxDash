@@ -25,20 +25,20 @@ namespace BoxDash.Map {
     public class MapManager : Singleton<MapManager>
     {
         #region Delegate and Events
-        public delegate void ResetMapChunk(int playerAtRow);
-        public static ResetMapChunk ResetMapChunkEvent;
-        public static void OnCorssHalfOfTheMapChunck(int playerAtRow)
+        public delegate void PlayerMoved(int playerAtRow, int playerAtColumn, Color32 traceColor);
+        public static PlayerMoved PlayerMovedEvent;
+        public static void OnPlayerMoved(int playerAtRow, int playerAtColumn, Color32 traceColor)
         {
-            if (ResetMapChunkEvent != null) ResetMapChunkEvent(playerAtRow);
+            if (PlayerMovedEvent != null) PlayerMovedEvent(playerAtRow, playerAtColumn, traceColor);
         }
 
         private void OnEnable()
         {
-            ResetMapChunkEvent += ResetMapChunkPosition;
+            PlayerMovedEvent += PlayerPositionUpdated;
         }
 
         private void OnDisable() {
-            ResetMapChunkEvent -= ResetMapChunkPosition;
+            PlayerMovedEvent -= PlayerPositionUpdated;
         }
         #endregion
 
@@ -201,6 +201,47 @@ namespace BoxDash.Map {
             return column;
         }
 
+        /// <summary>
+        /// Called when player position updated.
+        /// </summary>
+        /// <param name="playerAtRow">The current player position on Row.</param>
+        /// <param name="playerAtColumn">The current player position on column.</param>
+        /// <param name="traceColor">The trace color that player will left behind.</param>
+        private void PlayerPositionUpdated(int playerAtRow, int playerAtColumn, Color32 traceColor) {
+            // Leave a trace.
+            ChangeTileUpperMeshColor(playerAtRow, playerAtColumn, traceColor);
+
+            // Check if the map needs update.
+            MapUpdateCheck(playerAtRow);
+        }
+
+        /// <summary>
+        /// Check if the player passed a specific point so that the map needs update itself
+        /// to create a endless map.
+        /// </summary>
+        /// <param name="playerPositionOnY">The current player location.</param>
+        private void MapUpdateCheck(int playerPositionOnY)
+        {
+            // First in sure the player get pass the first map chunck. 
+            if (playerPositionOnY > MapManager.LengthOfMapChunk * 2)
+            {
+                // Then give it a offset of half of the map chunk (Once again, LengthOfMapChunk is actul the half
+                // of the map), everytime player pass a full chunk (LengthOfMapChunk * 2) call the 
+                // mapManager to generate new map ahead.
+                if ((playerPositionOnY + MapManager.LengthOfMapChunk) % (MapManager.LengthOfMapChunk * 2) == 0)
+                {
+                    // This means that player is now standing on the half of the map chunk
+                    ResetMapChunkPosition(playerPositionOnY);
+                }
+            }
+        }
+
+        private void ChangeTileUpperMeshColor(int playerAtRow, int playerAtColumn, Color32 color)
+        {
+            GetTile(playerAtRow, playerAtColumn).UpperMesh.material.color =
+                playerAtRow % 2 != 0 ? color.ChangeColorBrightness(-0.3f) : color;
+        }
+
         private void ResetMapChunkPosition(int playerAtRow)
         {
             // First get the logical index (AKA. the N.th map chunk player has passed) of the map chunk.
@@ -233,7 +274,6 @@ namespace BoxDash.Map {
                 }
             }
         }
-
         #endregion
 
         #region Public methods
@@ -249,11 +289,7 @@ namespace BoxDash.Map {
             return m_MapChunkList[(playerAtRow / (LengthOfMapChunk * 2)) % NumberOfMapChunk].GetTile(playerAtRow % (LengthOfMapChunk * 2), playerAtColumn);
         }
 
-        public void ChangeTileUpperMeshColor(int playerAtRow, int playerAtColumn, Color32 color)
-        {
-            GetTile(playerAtRow, playerAtColumn).UpperMesh.material.color =
-                playerAtRow % 2 != 0 ? color.ChangeColorBrightness(-0.3f) : color;
-        }
+
         #endregion
     }
 }
