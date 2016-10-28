@@ -7,8 +7,6 @@ namespace BoxDash.Player {
     /// </summary>
     public class PlayerBoxController : MonoBehaviour
     {
-
-
         #region Private variables
         private enum MoveDirection {
             UpperLeft = 0,
@@ -20,14 +18,15 @@ namespace BoxDash.Player {
         private int m_PlayerOnX = 0;
         #endregion
 
-        public void Init(int onRow, int onColumn) {
+        public void Init(int onRow, int onColumn, Quaternion rotation) {
             m_PlayerOnY = onColumn;
             m_PlayerOnX = onRow;
 
             SetPlayerLocation(m_PlayerOnY, m_PlayerOnX);
 
-            this.transform.rotation = MapManager.Instance.GetTile(m_PlayerOnY, m_PlayerOnX).transform.rotation;
-            MapManager.OnPlayerMoved(m_PlayerOnY, m_PlayerOnX, Color.yellow);
+            this.transform.rotation = rotation;
+
+            GameManager.OnPlayerMoved(m_PlayerOnY, m_PlayerOnX, this.transform.position);
         }
 
         private void MoveBoxAndCheckIfMapNeedsUpdate(MoveDirection direction, int unit = 2) {
@@ -46,7 +45,7 @@ namespace BoxDash.Player {
                             SetPlayerLocation(++m_PlayerOnY, --m_PlayerOnX);
                         }
                         // Check if the map needs update.
-                        MapManager.OnPlayerMoved(m_PlayerOnY, m_PlayerOnX, Color.yellow);
+                        GameManager.OnPlayerMoved(m_PlayerOnY, m_PlayerOnX, this.transform.position);
                     } 
                     break;
                 case MoveDirection.UpperRight:
@@ -62,7 +61,7 @@ namespace BoxDash.Player {
                             SetPlayerLocation(++m_PlayerOnY, m_PlayerOnX);
                         }
                         // Check if the map needs update.
-                        MapManager.OnPlayerMoved(m_PlayerOnY, m_PlayerOnX, Color.yellow);
+                        GameManager.OnPlayerMoved(m_PlayerOnY, m_PlayerOnX, this.transform.position);
                     }
                     break;
                 default:

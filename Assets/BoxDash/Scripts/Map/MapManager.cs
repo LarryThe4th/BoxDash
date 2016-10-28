@@ -25,20 +25,16 @@ namespace BoxDash.Map {
     public class MapManager : Singleton<MapManager>
     {
         #region Delegate and Events
-        public delegate void PlayerMoved(int playerAtRow, int playerAtColumn, Color32 traceColor);
-        public static PlayerMoved PlayerMovedEvent;
-        public static void OnPlayerMoved(int playerAtRow, int playerAtColumn, Color32 traceColor)
-        {
-            if (PlayerMovedEvent != null) PlayerMovedEvent(playerAtRow, playerAtColumn, traceColor);
-        }
+        public delegate void PlayerMovedOnMap(int playerAtRow, int playerAtColumn);
+        public static PlayerMovedOnMap PlayerMovedOnMapEvent;
 
         private void OnEnable()
         {
-            PlayerMovedEvent += PlayerPositionUpdated;
+            PlayerMovedOnMapEvent += PlayerPositionUpdated;
         }
 
         private void OnDisable() {
-            PlayerMovedEvent -= PlayerPositionUpdated;
+            PlayerMovedOnMapEvent -= PlayerPositionUpdated;
         }
         #endregion
 
@@ -46,20 +42,17 @@ namespace BoxDash.Map {
         // ---------- Public varibales -----------
         [Tooltip("The main there color of the whole map.")]
         public Color32 MapThemeColor = Color.white;
+        public Color32 PlayerTraceColor = Color.white;
 
         public const int MaxNumberOfTilesOnRow = 7;
-        public const int LengthOfMapChunk = 15;
+        public const int LengthOfMapChunk = 20;
         public const int NumberOfMapChunk = 2;
-
         #endregion
 
         #region Private variables
         // ---------- Private variables ----------
         private GameObject m_MapTilePrefab = null;
         private GameObject m_WallTilePrefab = null;
-
-        private Vector3 m_TileRotation = new Vector3(-90, 45, 0);
-
         // Calualate the diagonal line across the tile qube, as long as the
         // tile is a square, the diagonal line's lenght should be (2^2 * (length of side)). 
         private static readonly float m_MapChunkOffset = LengthOfMapChunk * GameManager.TileOffset;
@@ -73,6 +66,9 @@ namespace BoxDash.Map {
         public void InitMap() {
             if (!m_MapTilePrefab) ResourcesLoader.Load("Tile_white", out m_MapTilePrefab, "Map");
             if (!m_WallTilePrefab) ResourcesLoader.Load("Wall_white", out m_WallTilePrefab, "Map");
+
+            // Temp
+            PlayerTraceColor = Color.yellow;
 
             CreateMapChunk();
         }
@@ -134,7 +130,7 @@ namespace BoxDash.Map {
                     // Set the tile position with offset.
                     new Vector3(columnIndex * GameManager.TileOffset, 0, rowIndex * GameManager.TileOffset),
                     // Change its rotation so it can facing the correct direction.
-                    Quaternion.Euler(m_TileRotation)) as GameObject;
+                    Quaternion.Euler(GameManager.TileRotation)) as GameObject;
 
                 // Get the map tile script.
                 MapTile mapTile = tile.GetComponent<MapTile>();
@@ -180,7 +176,7 @@ namespace BoxDash.Map {
                         columnIndex * GameManager.TileOffset + (GameManager.TileOffset / 2), 
                         0, 
                         rowIndex * GameManager.TileOffset + (GameManager.TileOffset / 2)),
-                    Quaternion.Euler(m_TileRotation)) as GameObject;
+                    Quaternion.Euler(GameManager.TileRotation)) as GameObject;
 
                 MapTile mapTile = tile.GetComponent<MapTile>();
 
@@ -207,9 +203,9 @@ namespace BoxDash.Map {
         /// <param name="playerAtRow">The current player position on Row.</param>
         /// <param name="playerAtColumn">The current player position on column.</param>
         /// <param name="traceColor">The trace color that player will left behind.</param>
-        private void PlayerPositionUpdated(int playerAtRow, int playerAtColumn, Color32 traceColor) {
+        private void PlayerPositionUpdated(int playerAtRow, int playerAtColumn) {
             // Leave a trace.
-            ChangeTileUpperMeshColor(playerAtRow, playerAtColumn, traceColor);
+            ChangeTileUpperMeshColor(playerAtRow, playerAtColumn, PlayerTraceColor);
 
             // Check if the map needs update.
             MapUpdateCheck(playerAtRow);
@@ -223,12 +219,12 @@ namespace BoxDash.Map {
         private void MapUpdateCheck(int playerPositionOnY)
         {
             // First in sure the player get pass the first map chunck. 
-            if (playerPositionOnY > MapManager.LengthOfMapChunk * 2)
+            if (playerPositionOnY > LengthOfMapChunk * 2)
             {
                 // Then give it a offset of half of the map chunk (Once again, LengthOfMapChunk is actul the half
                 // of the map), everytime player pass a full chunk (LengthOfMapChunk * 2) call the 
                 // mapManager to generate new map ahead.
-                if ((playerPositionOnY + MapManager.LengthOfMapChunk) % (MapManager.LengthOfMapChunk * 2) == 0)
+                if ((playerPositionOnY + LengthOfMapChunk) % (LengthOfMapChunk * 2) == 0)
                 {
                     // This means that player is now standing on the half of the map chunk
                     ResetMapChunkPosition(playerPositionOnY);
