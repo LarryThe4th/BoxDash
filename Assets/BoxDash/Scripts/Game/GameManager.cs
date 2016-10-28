@@ -2,6 +2,7 @@
 using BoxDash.Map;
 using BoxDash.Player;
 using BoxDash.Utility;
+using BoxDash.SceneCamera;
 
 namespace BoxDash {
     /// <summary>
@@ -9,8 +10,10 @@ namespace BoxDash {
     /// </summary>
     public class GameManager : Singleton<GameManager>
     {
+        #region Public varibales
         public static readonly float TileSideLength = 0.254f;
-        private PlayerBoxController m_Player;
+        public static readonly float TileOffset = Mathf.Sqrt(2) * GameManager.TileSideLength;
+        #endregion
 
         // Use this for initialization
         private void Start()
@@ -18,26 +21,26 @@ namespace BoxDash {
             // Initialize the game map.
             MapManager.Instance.InitMap();
 
+            CameraController.Instance.Init();
+
             // Initialize the player object.
-            m_Player = CreateCharacter();
-            m_Player.Init();
+            CreateCharacter();
         }
 
         private PlayerBoxController CreateCharacter() {
             // Initzlie the player character.
             GameObject m_PlayerPrefab = null;
-            ResourcesLoader.Load("playerBox", out m_PlayerPrefab);
+            ResourcesLoader.Load("PlayerBox", out m_PlayerPrefab);
 
             // Instantiate a new player character with position and rotatoin settings.
             GameObject player = Instantiate(
                 m_PlayerPrefab,
-                MapManager.Instance.GetPlayerRespawnLocation.position,
-                MapManager.Instance.GetPlayerRespawnLocation.rotation) as GameObject;
+                Vector3.zero,
+                Quaternion.identity) as GameObject;
 
+            player.GetComponent<PlayerBoxController>().Init(2, 4);
             return player.GetComponent<PlayerBoxController>();
         }
-
-
     }
 
 }
