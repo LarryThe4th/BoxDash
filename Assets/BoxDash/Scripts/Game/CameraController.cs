@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using BoxDash.Map;
+using BoxDash.Tile;
 using BoxDash.Utility;
 
 namespace BoxDash.SceneCamera {
@@ -9,25 +9,28 @@ namespace BoxDash.SceneCamera {
         #region Events
         private void OnEnable()
         {
-            GameManager.PlayerMovedInWorldSpaceEvent += UpdateCameraDesireLocation;
+            EventCenter.PlayerMovedInWorldSpaceEvent += UpdateCameraDesireLocation;
         }
 
         private void OnDisable()
         {
-            GameManager.PlayerMovedInWorldSpaceEvent -= UpdateCameraDesireLocation;
+            EventCenter.PlayerMovedInWorldSpaceEvent -= UpdateCameraDesireLocation;
         }
         #endregion
 
         #region Public varibales
         // ---------- Public varibales -----------
         public static bool StartFollowingPlayer = false;
+
+
+
+
         #endregion
 
         #region Private varibales
         // ------------- Private varibales -------------
         // The reference of the camera compoment on this game object.
         private Camera m_SceneCamera;
-
         [Range(1, 5)]
         [SerializeField]
         // The camera follow speed.
@@ -38,7 +41,6 @@ namespace BoxDash.SceneCamera {
 
         public void Init() {
             m_SceneCamera  = GetComponent<Camera>();
-
             ToMapCenter();
         }
 
@@ -53,7 +55,8 @@ namespace BoxDash.SceneCamera {
         /// </summary>
         public void ToMapCenter() {
             m_SceneCamera.transform.position = new Vector3(
-                GameManager.TileOffset * Mathf.FloorToInt((MapManager.MaxNumberOfTilesOnRow - 1) / 2),
+                // TileBase.TileOffset * Mathf.FloorToInt((MapManager.Instance.GetMaximunTilesOnColnum - 1) / 2),
+                TileBase.TileOffset * ((MapManager.Instance.GetMaximunTilesOnColnum - 1) / 2) - TileBase.TileOffset / 2,
                 m_SceneCamera.transform.position.y,
                 m_SceneCamera.transform.position.z);
         }
@@ -61,7 +64,7 @@ namespace BoxDash.SceneCamera {
         private void Update() {
             // If current camera position is far away form the player position on Z axis.
             if (!Mathf.Approximately(this.transform.position.z, m_DesireCameraDestinationZ)) {
-                this.transform.localPosition = 
+               this.transform.localPosition = 
                     new Vector3(
                         this.transform.localPosition.x, 
                         this.transform.localPosition.y, 

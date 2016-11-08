@@ -1,11 +1,10 @@
 ﻿using UnityEngine;
-using BoxDash.Map;
+using BoxDash.Tile;
 using BoxDash.Player;
 using BoxDash.Utility;
 using BoxDash.SceneCamera;
 
 namespace BoxDash {
-
     public enum CauseOfGameOver {
         OnCollapsedTile = 0,
         FallInHole
@@ -17,12 +16,6 @@ namespace BoxDash {
     public class GameManager : Singleton<GameManager>
     {
         #region Delegate and Events
-        public delegate void PlayerMovedInWorldSpace(Vector3 position);
-        public static PlayerMovedInWorldSpace PlayerMovedInWorldSpaceEvent;
-
-        public delegate void PlayerMovedOnMap(int playerAtRow, int playerAtColumn);
-        public static PlayerMovedOnMap PlayerMovedOnMapEvent;
-
         public delegate void OnEvent();
         public static OnEvent GameStartEvent;
         public static void OnGameStart() {
@@ -35,36 +28,27 @@ namespace BoxDash {
         {
             if (GameOverEvent != null) GameOverEvent(cause);
         }
-
-        public static void OnPlayerMoved(int playerAtRow, int playerAtColumn, Vector3 position)
-        {
-            if (PlayerMovedOnMapEvent != null) PlayerMovedOnMapEvent(playerAtRow, playerAtColumn);
-            if (PlayerMovedInWorldSpaceEvent != null) PlayerMovedInWorldSpaceEvent(position);
-        }
         #endregion
 
         #region Public varibales
-        public static readonly float TileSideLength = 0.254f;
-        public static readonly float TileOffset = Mathf.Sqrt(2) * GameManager.TileSideLength;
-        public static readonly Vector3 TileRotation = new Vector3(-90, 45, 0);
-
-        public static PlayerBoxController Player;
+        public static PlayerBoxController PlayerBox;
         #endregion
 
         // Use this for initialization
         private void Start()
         {
             // Initialize the game map.
-            MapManager.Instance.InitMap();
+            MapManager.Instance.Init();
 
             CameraController.Instance.Init();
 
             // Initialize the player object.
-            Player = CreateCharacter();
-            Player.Init(3, 6, Quaternion.Euler(TileRotation));
+            if (!PlayerBox) PlayerBox = CreateCharacter();
+            PlayerBox.Init(4, 3);
         }
 
-        private PlayerBoxController CreateCharacter() {
+        private PlayerBoxController CreateCharacter()
+        {
             // Initzlie the player character.
             GameObject m_PlayerPrefab = null;
             ResourcesLoader.Load("PlayerBox", out m_PlayerPrefab);
@@ -75,9 +59,7 @@ namespace BoxDash {
                 Vector3.zero,
                 Quaternion.identity) as GameObject;
 
-            player.GetComponent<PlayerBoxController>();
             return player.GetComponent<PlayerBoxController>();
         }
     }
-
 }

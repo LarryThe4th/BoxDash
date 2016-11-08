@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
-using BoxDash.Map;
+using BoxDash.Tile;
+using BoxDash.Utility;
 using Random = UnityEngine.Random;
 
 namespace BoxDash.Player {
@@ -42,23 +43,20 @@ namespace BoxDash.Player {
         private bool m_PlayerCanControl = false;
         #endregion
 
-        public void Init(int onRow, int onColumn, Quaternion rotation) {
-            PlayerOnY = onColumn;
-            PlayerOnX = onRow;
+        public void Init(int onRow, int onColumn) {
+            PlayerOnY = onRow;
+            PlayerOnX = onColumn;
 
+            // Shut off the player box's physics
             m_RigidBody = GetComponent<Rigidbody>();
             m_RigidBody.useGravity = false;
             m_RigidBody.velocity = Vector3.zero;
 
+            this.transform.rotation = TileBase.TileFixedQuaternion;
+
             SetPlayerLocation(PlayerOnY, PlayerOnX);
-
-            this.transform.rotation = rotation;
-
-            GameManager.OnPlayerMoved(PlayerOnY, PlayerOnX, this.transform.position);
-
             // Temp
-            GameManager.OnGameStart();
-
+            // GameManager.OnGameStart();
             m_PlayerCanControl = true;
         }
 
@@ -77,15 +75,13 @@ namespace BoxDash.Player {
                         else {
                             SetPlayerLocation(++PlayerOnY, --PlayerOnX);
                         }
-                        // Check if the map needs update.
-                        GameManager.OnPlayerMoved(PlayerOnY, PlayerOnX, this.transform.position);
                     } 
                     break;
                 case MoveDirection.UpperRight:
                     for (int i = 0; i < unit; i++)
                     {
                         // Reach the right map border.  
-                        if (PlayerOnY % 2 != 0 && PlayerOnX == MapManager.MaxNumberOfTilesOnRow - 2) break;
+                        if (PlayerOnY % 2 != 0 && PlayerOnX == MapManager.Instance.GetMaximunTilesOnColnum - 2) break;
                         // Loop the index between 0 and LengthOfMapChunk * NumberOfMapChunk.
                         if (PlayerOnY % 2 != 0) {
                             SetPlayerLocation(++PlayerOnY, ++PlayerOnX);
@@ -93,8 +89,6 @@ namespace BoxDash.Player {
                         else {
                             SetPlayerLocation(++PlayerOnY, PlayerOnX);
                         }
-                        // Check if the map needs update.
-                        GameManager.OnPlayerMoved(PlayerOnY, PlayerOnX, this.transform.position);
                     }
                     break;
                 default:
@@ -105,17 +99,19 @@ namespace BoxDash.Player {
         }
 
         private void SetPlayerLocation(int locationX, int locationY) {
-            MapTile currentTile = MapManager.Instance.GetTile(locationX, locationY);
+            TileBase currentTile = MapManager.Instance.GetTile(locationX, locationY);
             // Reset player box object location.
             this.transform.position = currentTile.transform.position;
             // this.transform.position = MapManager.Instance.GetTile(locationX, locationY).transform.position;
             // Lift it up to the ground.
-            this.transform.position += new Vector3(0, GameManager.TileSideLength / 2, 0);
+            this.transform.position += new Vector3(0, TileBase.TileSideLength / 2, 0);
+            // Check if the map needs update.
+            EventCenter.OnPlayerMoved(PlayerOnY, PlayerOnX, this.transform.position);
 
-            // Whops
-            if (currentTile.GetTileType == TileTypes.Hole) {
-                GameManager.OnGameOver(CauseOfGameOver.FallInHole);
-            }
+            //// Whops
+            //if (currentTile.GetTileType == TileTypes.Hole) {
+            //    GameManager.OnGameOver(CauseOfGameOver.FallInHole);
+            //}
         }
 
         private void OnGameOver(CauseOfGameOver cause) {
