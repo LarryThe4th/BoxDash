@@ -12,5 +12,6 @@ public class WallTile : TileBase
     {
         base.Init(rowIndex, columnIndex, tileColor);
         SetTileColor(tileColor);
+        m_CanPass = false;
     }
 }

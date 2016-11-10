@@ -7,7 +7,7 @@ namespace BoxDash.Player {
     /// <summary>
     /// This class controls the player box object.
     /// </summary>
-    [RequireComponent(typeof(Rigidbody))]
+    [RequireComponent(typeof(Rigidbody), typeof(BoxCollider))]
     public class PlayerBoxController : MonoBehaviour
     {
         #region Delegate and Events
@@ -38,6 +38,7 @@ namespace BoxDash.Player {
 
         // We gonna use it when the player fall off the map.
         private Rigidbody m_RigidBody;
+        private BoxCollider m_BoxCollider;
         // A flag of the player control.
         private bool m_PlayerCanControl = false;
         // The player box facing direction.
@@ -51,64 +52,72 @@ namespace BoxDash.Player {
             m_RigidBody = GetComponent<Rigidbody>();
             m_RigidBody.useGravity = false;
             m_RigidBody.velocity = Vector3.zero;
+            m_BoxCollider = GetComponent<BoxCollider>();
             this.transform.rotation = TileBase.TileFixedQuaternion;
 
-            SetPlayerLocation(PlayerLocation.Y, PlayerLocation.X);
+            MovePlayer(0, 0);
         }
 
         private void OnGameStart() {
             m_PlayerCanControl = true;
         }
 
-        private void MoveBoxAndCheckIfMapNeedsUpdate(Direction direction, int unit = 1) {
+        private void MoveBoxAndCheckIfMapNeedsUpdate(Direction direction, int moveUnit = 1) {
             switch (direction) {
                 case Direction.UpperLeft:
-                    for (int i = 0; i < unit; i++)
+                    for (int i = 0; i < moveUnit; i++)
                     {
                         // Reach the left map border.
-                        if (PlayerLocation.Y % 2 != 0 && PlayerLocation.X == 0) break;
+                        // if (PlayerLocation.Y % 2 != 0 && PlayerLocation.X == 0) break;
                         // Loop the index between 0 and LengthOfMapChunk * NumberOfMapChunk.
                         if (PlayerLocation.Y % 2 != 0)
                         {
-                            SetPlayerLocation(++PlayerLocation.Y, PlayerLocation.X);
+                            MovePlayer(1, 0);
                         }
                         else {
-                            SetPlayerLocation(++PlayerLocation.Y, --PlayerLocation.X);
+                            MovePlayer(1, -1);
                         }
-                    } 
+                    }
                     break;
                 case Direction.UpperRight:
-                    for (int i = 0; i < unit; i++)
+                    for (int i = 0; i < moveUnit; i++)
                     {
                         // Reach the right map border.  
-                        if (PlayerLocation.Y % 2 != 0 && PlayerLocation.X == MapManager.Instance.GetMaximunTilesOnColnum - 2) break;
+                        // if (PlayerLocation.Y % 2 != 0 && PlayerLocation.X == MapManager.Instance.GetMaximunTilesOnColnum - 2) break;
                         // Loop the index between 0 and LengthOfMapChunk * NumberOfMapChunk.
                         if (PlayerLocation.Y % 2 != 0) {
-                            SetPlayerLocation(++PlayerLocation.Y, ++PlayerLocation.X);
+                            MovePlayer(1, 1);
                         }
                         else {
-                            SetPlayerLocation(++PlayerLocation.Y, PlayerLocation.X);
+                            MovePlayer(1, 0);
                         }
                     }
                     break;
                 default:
                     // No way this will get call...
-                    SetPlayerLocation(PlayerLocation.Y, PlayerLocation.X);
+                    MovePlayer(0, 0);
                     break;
             }
         }
 
-        private void SetPlayerLocation(int locationY, int locationX, Direction direction = Direction.None) {
-            TileBase currentTile = MapManager.Instance.GetTile(locationY, locationX);
+        private void MovePlayer(int moveOnY, int moveOnX, Direction direction = Direction.None) {
+            TileBase currentTile = MapManager.Instance.GetTile((PlayerLocation.Y + moveOnY), (PlayerLocation.X + moveOnX));
+            // If the target tile is a wall or some kinda of trap that is blocking the path
+            if (currentTile.CanPass == false || currentTile == null) return;
             // Reset player box object location.
-            this.transform.position = currentTile.transform.position;
-            // this.transform.position = MapManager.Instance.GetTile(locationX, locationY).transform.position;
-            // Lift it up to the ground.
-            this.transform.position += new Vector3(0, TileBase.TileSideLength / 2, 0);
+            this.transform.position = new Vector3(
+                currentTile.transform.position.x,
+                // Lift it up to the ground.
+                TileBase.TileSideLength / 2,
+                currentTile.transform.position.z);
 
             if (direction != Direction.None) {
                 // TODO
             }
+
+            // Update player location
+            PlayerLocation.Y += moveOnY;
+            PlayerLocation.X += moveOnX;
 
             // Check if the map needs update.
             EventCenter.OnPlayerMoved(currentTile, this.transform.position);
@@ -132,6 +141,12 @@ namespace BoxDash.Player {
                 default:
                     m_PlayerCanControl = false;
                     break;
+            }
+        }
+
+        private void OnTriggerEnter(Collider other) {
+            if (other.tag == "Trap") {
+                Debug.Log("Fuck! " + other.GetComponentInParent<TileBase>().GetTileType().ToString());
             }
         }
 

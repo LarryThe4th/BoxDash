@@ -7,6 +7,11 @@ public class FloorSpikesTile : TileBase
     #region Public varibales
     public Renderer UpperMesh;
     private Color32 OriginalColor;
+
+
+
+
+
     #endregion
 
     public override TileTypes GetTileType()

@@ -84,10 +84,6 @@ namespace BoxDash.Tile
         private const int m_MaximunChanceOfSkySpikes = 70;
         #endregion
 
-        // Calualate the diagonal line across the tile qube, as long as the
-        // tile is a square, the diagonal line's lenght should be (2^2 * (length of side)). 
-        // private static readonly float m_MapChunkOffset = LengthOfMapChunk * GameManager.TileOffset;
-
         #region Private methods
         /// <summary>
         /// Use this to init the map manager when game start.
@@ -208,17 +204,11 @@ namespace BoxDash.Tile
                 // is still at the first part of the track.
                 if (m_TrackPassedCount != 0)
                 {
-
-                    Debug.Log("Update! " + m_TrackPassedCount);
-
                     // The rise the difficulty.
                     RaisTrapGenerateChance();
 
                     // Reset the track behind this track.
                     ResetOldTrack(m_TrackPassedCount);
-
-                    // Reset the collaping of the track which the player is on.
-                    // StartTrackCollpasing(m_TrackPassedCount % 2);
                 }
             }
         }

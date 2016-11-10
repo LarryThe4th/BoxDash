@@ -55,12 +55,17 @@ namespace BoxDash.Tile {
 
         // Keep tracking the position where this tile repersened to.
         public Location2D CurrentLocation = new Location2D();
+
+        public bool CanPass {
+            get { return m_CanPass; }
+        }
         #endregion
 
         #region Private variables
         protected Rigidbody m_RigidBody;
         protected List<Renderer> m_RendererComponents = new List<Renderer>();
         protected Animator m_Animator;
+        protected bool m_CanPass = true;
         #endregion
 
         public virtual void Init(int rowIndex, int columnIndex, Color32 tileColor) {
@@ -118,6 +123,15 @@ namespace BoxDash.Tile {
             // Stop falling down.
             IsCollapsed = false;
             m_RigidBody.useGravity = false;
+        }
+
+        public virtual void ClearToPass() {
+            m_CanPass = true;
+        }
+
+        public virtual void UnclearToPass()
+        {
+            m_CanPass = false;
         }
 
         public override void OnObjectReuse(params object[] options)
