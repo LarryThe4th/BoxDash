@@ -3,7 +3,7 @@ using BoxDash.Tile;
 using BoxDash.Utility;
 using Random = UnityEngine.Random;
 
-namespace BoxDash {
+namespace BoxDash.Player {
     /// <summary>
     /// This class controls the player box object.
     /// </summary>
@@ -15,12 +15,14 @@ namespace BoxDash {
         {
             EventCenter.GameStartEvent += OnGameStart;
             EventCenter.GameOverEvent += OnGameOver;
+            PlayerInputHandler.PlayerInputEvent += MoveBoxAndCheckIfMapNeedsUpdate;
         }
 
         private void OnDisable()
         {
             EventCenter.GameStartEvent -= OnGameStart;
             EventCenter.GameOverEvent -= OnGameOver;
+            PlayerInputHandler.PlayerInputEvent -= MoveBoxAndCheckIfMapNeedsUpdate;
         }
         #endregion
 
@@ -31,19 +33,13 @@ namespace BoxDash {
         #endregion
 
         #region Private variables
-        private enum Direction {
-            None = 0,
-            UpperLeft,
-            UpperRight,
-        }
-
         // We gonna use it when the player fall off the map.
         private Rigidbody m_RigidBody;
         // private BoxCollider m_BoxCollider;
         // A flag of the player control.
-        private bool m_PlayerCanControl = false;
         // The player box facing direction.
-        private Direction m_CurrentFacing = Direction.None;
+        private PlayerInputHandler.Direction m_CurrentFacing = PlayerInputHandler.Direction.None;
+        private int m_MoveUnit = 1;
         #endregion
 
         public static void Init()
@@ -75,13 +71,13 @@ namespace BoxDash {
         }
 
         private void OnGameStart() {
-            m_PlayerCanControl = true;
+            // m_PlayerCanControl = true;
         }
 
-        private void MoveBoxAndCheckIfMapNeedsUpdate(Direction direction, int moveUnit = 1) {
+        private void MoveBoxAndCheckIfMapNeedsUpdate(PlayerInputHandler.Direction direction) {
             switch (direction) {
-                case Direction.UpperLeft:
-                    for (int i = 0; i < moveUnit; i++)
+                case PlayerInputHandler.Direction.UpperLeft:
+                    for (int i = 0; i < m_MoveUnit; i++)
                     {
                         // Reach the left map border.
                         // if (PlayerLocation.Y % 2 != 0 && PlayerLocation.X == 0) break;
@@ -95,8 +91,8 @@ namespace BoxDash {
                         }
                     }
                     break;
-                case Direction.UpperRight:
-                    for (int i = 0; i < moveUnit; i++)
+                case PlayerInputHandler.Direction.UpperRight:
+                    for (int i = 0; i < m_MoveUnit; i++)
                     {
                         // Reach the right map border.  
                         // if (PlayerLocation.Y % 2 != 0 && PlayerLocation.X == MapManager.Instance.GetMaximunTilesOnColnum - 2) break;
@@ -116,7 +112,7 @@ namespace BoxDash {
             }
         }
 
-        private void MovePlayer(int moveOnY, int moveOnX, Direction direction = Direction.None) {
+        private void MovePlayer(int moveOnY, int moveOnX, PlayerInputHandler.Direction direction = PlayerInputHandler.Direction.None) {
             TileBase currentTile = MapManager.Instance.GetTile((PlayerLocation.Y + moveOnY), (PlayerLocation.X + moveOnX));
             // If the target tile is a wall or some kinda of trap that is blocking the path
             if (currentTile.CanPass == false || currentTile == null) return;
@@ -127,7 +123,7 @@ namespace BoxDash {
                 TileBase.TileSideLength / 2,
                 currentTile.transform.position.z);
 
-            if (direction != Direction.None) {
+            if (direction != PlayerInputHandler.Direction.None) {
                 // TODO
             }
 
@@ -143,7 +139,7 @@ namespace BoxDash {
             switch (cause)
             {
                 case CauseOfGameOver.OnCollapsedTile:
-                    m_PlayerCanControl = false;
+                    // m_PlayerCanControl = false;
                     m_RigidBody.useGravity = true;
                     m_RigidBody.angularVelocity = new Vector3(
                         Random.Range(0.0f, 1.0f),
@@ -151,11 +147,10 @@ namespace BoxDash {
                         Random.Range(0.0f, 1.0f)) * (Random.Range(1, 10));
                     break;
                 case CauseOfGameOver.FallInHole:
-                    m_PlayerCanControl = false;
+                    // m_PlayerCanControl = false;
                     m_RigidBody.useGravity = true;
                     break;
                 default:
-                    m_PlayerCanControl = false;
                     break;
             }
         }
@@ -165,21 +160,6 @@ namespace BoxDash {
                 TileBase murder = other.GetComponentInParent<TileBase>();
                 if (murder.GetTileType() == TileTypes.FloorSpikes) EventCenter.OnGameOver(CauseOfGameOver.FloorSpikes);
                 else if (murder.GetTileType() == TileTypes.SkySpikes) EventCenter.OnGameOver(CauseOfGameOver.SkySpikes);
-            }
-        }
-
-        private void Update()
-        {
-            if (m_PlayerCanControl) { 
-                if (Input.GetKeyDown(KeyCode.A))
-                {
-                    MoveBoxAndCheckIfMapNeedsUpdate(Direction.UpperLeft);
-
-                }
-                if(Input.GetKeyDown(KeyCode.D))
-                {
-                    MoveBoxAndCheckIfMapNeedsUpdate(Direction.UpperRight);
-                }
             }
         }
     }

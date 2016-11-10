@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Random = UnityEngine.Random;
 using BoxDash.Tile;
+using BoxDash.Player;
 using BoxDash.Utility;
 
 namespace BoxDash
@@ -75,7 +76,7 @@ namespace BoxDash
         private int m_Timer = 0;
         // The time limit for the timer. 
         // Samller the number, faster the track will collapse,
-        private int m_TimeBetweenCollapse = 7;
+        private int m_TimeBetweenCollapse = 10;
         // The collapsing row's index in the tile pool.
         private int m_CollapseRowIndex = 0;
         // Keep tracking how many tracks are collapsed.

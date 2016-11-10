@@ -6,11 +6,18 @@ namespace BoxDash.UI
 {
     public class UIManager : Singleton<UIManager>
     {
+        public enum UIs {
+            Common = 0,
+            MainMenu,
+            Game
+        }
 
         // Use this for initialization
-        void Start()
-        {
-
+        public void Init() {
+            foreach (var ui in GetComponentsInChildren<SceneUIBase>())
+            {
+                ui.Init();
+            }
         }
     }
 }

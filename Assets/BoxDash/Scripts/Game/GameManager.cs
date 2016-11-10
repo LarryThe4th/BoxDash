@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using BoxDash.Utility;
+using BoxDash.Player;
 using BoxDash.SceneCamera;
+using BoxDash.UI;
 
 namespace BoxDash {
     public enum CauseOfGameOver {
@@ -24,13 +26,20 @@ namespace BoxDash {
             // Initialize the game map.
             MapManager.Instance.Init();
 
+            // Initialize the game UIs.
+            UIManager.Instance.Init();
+
+            // Reset the camera position.
             CameraController.Instance.Init();
 
             // Initialize the player object.
             PlayerBoxController.Init();
             PlayerBoxController.PlayerInstance.SetRespawnPosition(6, 3);
 
-            EventCenter.OnGameStart();
         }
+
+        //public void PlayGame() {
+        //    EventCenter.OnGameStart();
+        //}
     }
 }
