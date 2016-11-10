@@ -20,6 +20,7 @@ public class SkySpikesTile : TileBase
         base.Init(rowIndex, columnIndex, tileColor);
         // Reset the upper mesh's color.
         SetTileColor(tileColor);
+        m_Animator.speed = 1;
         m_Animator.SetBool("Active", true);
     }
 
@@ -44,6 +45,6 @@ public class SkySpikesTile : TileBase
     public override void Collapse()
     {
         base.Collapse();
-        m_Animator.SetBool("Active", false);
+        m_Animator.speed = 0;
     }
 }

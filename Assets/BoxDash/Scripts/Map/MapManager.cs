@@ -1,11 +1,10 @@
 ﻿using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
-using BoxDash.Utility;
-using BoxDash.Tile;
 using Random = UnityEngine.Random;
+using BoxDash.Tile;
+using BoxDash.Utility;
 
-namespace BoxDash.Tile
+namespace BoxDash
 {
     /// <summary>
     /// This class manager all the map content in game.
@@ -28,8 +27,6 @@ namespace BoxDash.Tile
         #endregion
 
         #region Public varibales
-        // ---------- Public varibales -----------
-        [Tooltip("The main there color of the whole map.")]
         public GameObject m_FloorTilePrefab = null;
         public GameObject m_WallTilePrefab = null;
         public GameObject m_HoleTilePrefab = null;
@@ -37,6 +34,7 @@ namespace BoxDash.Tile
         public GameObject m_SkySpikesTilePrefab = null;
 
         // The main theme color of the map.
+        [Tooltip("The main there color of the whole map.")]
         public Color32 MapThemeColor = Color.white;
         // The color of the trace that will be left behind on 
         // those tiles where the player step on.
@@ -49,29 +47,42 @@ namespace BoxDash.Tile
         #endregion
 
         #region Private variables
-        // ---------- Private variables ----------
-
+        #region Track color relate
         // Since the wall tiles are also a part of the map, its color
         // will be depende on the theme color.
         private Color32 m_MapWallTileColor = Color.white;
         // The sceondly theme color of the tiles.
         private Color32 m_SecondlyThemeColor = Color.white;
+        #endregion
+
+        #region Track relate
         // The maximun number of tiles on column.
         private const int MaxNumberOfTilesOnColumn = 7;
         private const int LengthOfPreTrack = 30;
         private const int NumberOfPreGenerateTracks = 2;
-
+        // Keep tracking the player progress.
+        private int m_PlayerPassedTrackCount = 0;
+        // A pool of 2 tracks contains 20 rows of tiles each.
+        private List<TileBase>[,] m_TilePool = new List<TileBase>[NumberOfPreGenerateTracks, LengthOfPreTrack];
         // We have to ensure that at least one tile is 
         // save to pass into the exit row for the player. 
         private int m_SafePathTileColumnIndex = 0;
+        #endregion
 
+        #region Tile collapse function relate
         private bool m_KeepCollapsing = false;
-        // Keep tracking the player progress.
-        private int m_TrackPassedCount = 0;
+        // The count down timer.
+        private int m_Timer = 0;
+        // The time limit for the timer. 
+        // Samller the number, faster the track will collapse,
+        private int m_TimeBetweenCollapse = 7;
+        // The collapsing row's index in the tile pool.
+        private int m_CollapseRowIndex = 0;
+        // Keep tracking how many tracks are collapsed.
+        private int m_CurrentCollapsingTrackCount = 0;
+        #endregion
 
-        // A pool of 2 tracks contains 20 rows of tiles each.
-        private List<TileBase>[,] m_TilePool = new List<TileBase>[NumberOfPreGenerateTracks, LengthOfPreTrack];
-
+        #region Trap and obstacles generate chance relate
         // The chance of a tile being a hole on the ground.
         private int m_ChanceOfHole = 5;
         private const int m_ChanceIncreasePreUpdate_Hole = 1;
@@ -82,6 +93,7 @@ namespace BoxDash.Tile
         private int m_ChanceOfSkySpikes = m_MaximunChanceOfFloorSpikes;
         private const int m_ChanceIncreasePreUpdate_SkySpikes = 1;
         private const int m_MaximunChanceOfSkySpikes = 70;
+        #endregion
         #endregion
 
         #region Private methods
@@ -136,7 +148,7 @@ namespace BoxDash.Tile
 
         private void OnGameStarted()
         {
-            // m_KeepCollapsing = true;
+            m_KeepCollapsing = true;
         }
 
         /// <summary>
@@ -147,7 +159,7 @@ namespace BoxDash.Tile
         private void CreateTrack()
         {
             // Pick a random tile (Wall is not included) as the start of the safe path.
-            m_SafePathTileColumnIndex = Random.Range(1, GetMaximunTilesOnColnum - 1);
+            m_SafePathTileColumnIndex = Random.Range(1, MaxNumberOfTilesOnColumn - 1);
             for (int trackIndex = 0; trackIndex < NumberOfPreGenerateTracks; trackIndex++)
             {
                 for (int rowIndex = 0; rowIndex < LengthOfPreTrack; rowIndex++)
@@ -197,18 +209,19 @@ namespace BoxDash.Tile
 
         private void UpdateTrackCheck(TileBase currentTile) {
             // If player passed half of the track.
-            if (currentTile.CurrentLocation.Y % LengthOfPreTrack == 13)
+            if (currentTile.CurrentLocation.Y % LengthOfPreTrack == LengthOfPreTrack / 3)
             {
-                m_TrackPassedCount = currentTile.CurrentLocation.Y / LengthOfPreTrack;
+
+                m_PlayerPassedTrackCount = currentTile.CurrentLocation.Y / LengthOfPreTrack;
                 // We don't need to update the track when player 
                 // is still at the first part of the track.
-                if (m_TrackPassedCount != 0)
+                if (m_PlayerPassedTrackCount != 0)
                 {
                     // The rise the difficulty.
                     RaisTrapGenerateChance();
 
                     // Reset the track behind this track.
-                    ResetOldTrack(m_TrackPassedCount);
+                    ResetOldTrack(m_PlayerPassedTrackCount);
                 }
             }
         }
@@ -294,7 +307,9 @@ namespace BoxDash.Tile
             }
             // Else overwrite the exist data.
             else {
-                if (tile.GetTileType() != TileTypes.Wall) theRow[index].EnableObject(false);
+                if (tile.GetTileType() != TileTypes.Wall) {
+                    theRow[index].EnableObject(false);
+                } 
                 theRow[index] = tile;
             }
         }
@@ -360,9 +375,13 @@ namespace BoxDash.Tile
         }
 
         #region Tile collapse
+        private void StartTileCollapse(int trackIndex) { 
+            // StartCoroutine(TileCollapse(trackIndex));
+        }
+
         private void OnTileCollapse(TileBase tile) {
             tile.Collapse();
-            if (GameManager.PlayerBox.PlayerLocation.Y <= tile.CurrentLocation.Y) {
+            if (PlayerBoxController.PlayerInstance.PlayerLocation.Y == tile.CurrentLocation.Y) {
                 // Hide the tile right under the player box so user can clear see how it falls.
                 tile.EnableObject(false);
                 // Stop further collapsing.
@@ -371,20 +390,38 @@ namespace BoxDash.Tile
             }
         }
 
-        int collapseRowIndex = 0;
-        int timer = 0;
-        int timerStamp = 20;
         private void FixedUpdate() {
-            if (m_KeepCollapsing && collapseRowIndex < LengthOfPreTrack) {
-                timer++;
-                if (timer > timerStamp) {
-                    foreach (var tile in m_TilePool[m_TrackPassedCount % 2, collapseRowIndex++])
+            if (m_KeepCollapsing) {
+                m_Timer++;
+                // If its time to collapse.
+                if (m_Timer > m_TimeBetweenCollapse)
+                {
+                    // Check if player run too fast ahead.
+                    if (m_CurrentCollapsingTrackCount < m_PlayerPassedTrackCount) {
+                        // It should stop collapsing the old track since it will be 
+                        // reuse for creating new track ahead, set the collapsing track count
+                        // to current track which the player is on.
+                        m_CurrentCollapsingTrackCount = m_PlayerPassedTrackCount;
+
+                        // Also reset the collapse row index to ZERO
+                        m_CollapseRowIndex = 0;
+                    }
+                    // Collapse a row.
+                    foreach (var tile in m_TilePool[m_CurrentCollapsingTrackCount % 2, m_CollapseRowIndex++])
                     {
                         OnTileCollapse(tile);
                     }
-                    timer = 0;
-                    collapseRowIndex %= LengthOfPreTrack;
+                    // If a whole track is already collapsed.
+                    if (m_CollapseRowIndex == LengthOfPreTrack) {
+                        // Add one to the collapsing count.
+                        m_CurrentCollapsingTrackCount++;
+                        // Also reset the collapse row index to ZERO
+                        m_CollapseRowIndex = 0;
+                    }
+                    // Reset the timer.
+                    m_Timer = 0;
                 }
+
             }
         }
         #endregion

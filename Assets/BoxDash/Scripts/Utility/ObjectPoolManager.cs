@@ -12,7 +12,7 @@ namespace BoxDash.Utility {
 
         public virtual void InitPoolObject() { }
 
-        public abstract void OnObjectReuse(params object[] options);
+        public virtual void OnObjectReuse(params object[] options) { }
     }
 
     public class ObjectPoolManager : Singleton<ObjectPoolManager>

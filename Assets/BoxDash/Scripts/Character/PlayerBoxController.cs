@@ -3,7 +3,7 @@ using BoxDash.Tile;
 using BoxDash.Utility;
 using Random = UnityEngine.Random;
 
-namespace BoxDash.Player {
+namespace BoxDash {
     /// <summary>
     /// This class controls the player box object.
     /// </summary>
@@ -26,6 +26,7 @@ namespace BoxDash.Player {
 
         #region Public variables
         // ---------- Public variables ------------
+        public static PlayerBoxController PlayerInstance;
         public Location2D PlayerLocation = new Location2D();
         #endregion
 
@@ -38,21 +39,36 @@ namespace BoxDash.Player {
 
         // We gonna use it when the player fall off the map.
         private Rigidbody m_RigidBody;
-        private BoxCollider m_BoxCollider;
+        // private BoxCollider m_BoxCollider;
         // A flag of the player control.
         private bool m_PlayerCanControl = false;
         // The player box facing direction.
         private Direction m_CurrentFacing = Direction.None;
         #endregion
 
-        public void Init(int onRowIndex, int onColumnIndex) {
+        public static void Init()
+        {
+            // Initzlie the player character.
+            GameObject m_PlayerPrefab = null;
+            ResourcesLoader.Load("PlayerBox", out m_PlayerPrefab);
+
+            // Instantiate a new player character with position and rotatoin settings.
+            GameObject player = Instantiate(
+                m_PlayerPrefab,
+                Vector3.zero,
+                Quaternion.identity) as GameObject;
+
+            PlayerInstance = player.GetComponent<PlayerBoxController>();
+        }
+
+        public void SetRespawnPosition(int onRowIndex, int onColumnIndex) {
             PlayerLocation.SetLocation(onColumnIndex, onRowIndex);
 
             // Shut off the player box's physics
             m_RigidBody = GetComponent<Rigidbody>();
             m_RigidBody.useGravity = false;
             m_RigidBody.velocity = Vector3.zero;
-            m_BoxCollider = GetComponent<BoxCollider>();
+            // m_BoxCollider = GetComponent<BoxCollider>();
             this.transform.rotation = TileBase.TileFixedQuaternion;
 
             MovePlayer(0, 0);
@@ -146,7 +162,9 @@ namespace BoxDash.Player {
 
         private void OnTriggerEnter(Collider other) {
             if (other.tag == "Trap") {
-                Debug.Log("Fuck! " + other.GetComponentInParent<TileBase>().GetTileType().ToString());
+                TileBase murder = other.GetComponentInParent<TileBase>();
+                if (murder.GetTileType() == TileTypes.FloorSpikes) EventCenter.OnGameOver(CauseOfGameOver.FloorSpikes);
+                else if (murder.GetTileType() == TileTypes.SkySpikes) EventCenter.OnGameOver(CauseOfGameOver.SkySpikes);
             }
         }
 

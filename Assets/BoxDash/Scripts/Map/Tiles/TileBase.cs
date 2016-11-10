@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using Random = UnityEngine.Random;
 using BoxDash.Utility;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace BoxDash.Tile {
@@ -115,15 +116,23 @@ namespace BoxDash.Tile {
                 Random.Range(0.0f, 1.0f),
                 Random.Range(0.0f, 1.0f),
                 Random.Range(0.0f, 1.0f)) * (Random.Range(1, 10));
+            StartCoroutine(StopFallingAfterCollapsed(1f));
+        }
+
+        private IEnumerator StopFallingAfterCollapsed(float wait) {
+            yield return new WaitForSeconds(wait);
+            // Stop falling down.
+            StopFalling();
+        }
+
+        protected virtual void StopFalling() {
+            IsCollapsed = false;
+            m_RigidBody.useGravity = false;
+            m_RigidBody.velocity = Vector3.zero;
+            m_RigidBody.angularVelocity = Vector3.zero;
         }
 
         public abstract TileTypes GetTileType();
-
-        private void StopFalling() {
-            // Stop falling down.
-            IsCollapsed = false;
-            m_RigidBody.useGravity = false;
-        }
 
         public virtual void ClearToPass() {
             m_CanPass = true;
@@ -132,11 +141,6 @@ namespace BoxDash.Tile {
         public virtual void UnclearToPass()
         {
             m_CanPass = false;
-        }
-
-        public override void OnObjectReuse(params object[] options)
-        {
-            StopFalling();
         }
 
         //public TileTypes GetTileType {

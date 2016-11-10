@@ -7,11 +7,6 @@ public class FloorSpikesTile : TileBase
     #region Public varibales
     public Renderer UpperMesh;
     private Color32 OriginalColor;
-
-
-
-
-
     #endregion
 
     public override TileTypes GetTileType()
@@ -24,6 +19,7 @@ public class FloorSpikesTile : TileBase
         base.Init(rowIndex, columnIndex, tileColor);
         // Reset the upper mesh's color.
         SetTileColor(tileColor);
+        m_Animator.speed = 1;
         m_Animator.SetBool("Active", true);
     }
 
@@ -39,6 +35,11 @@ public class FloorSpikesTile : TileBase
         UpperMesh.material.color = OriginalColor;
     }
 
+    public override void InitPoolObject()
+    {
+        base.InitPoolObject();
+    }
+
     public override void UseTile(params object[] options)
     {
         base.UseTile();
@@ -48,6 +49,6 @@ public class FloorSpikesTile : TileBase
     public override void Collapse()
     {
         base.Collapse();
-        m_Animator.SetBool("Active", false);
+        m_Animator.speed = 0;
     }
 }
