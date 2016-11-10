@@ -8,14 +8,4 @@ public class HoleTile : TileBase
     {
         return TileTypes.Hole;
     }
-
-    public override void Init(Color32 tileColor)
-    {
-        // Empty
-    }
-
-    public override void OnObjectReuse(params object[] options)
-    {
-        // Empty
-    }
 }

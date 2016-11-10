@@ -5,7 +5,7 @@ namespace BoxDash.Utility {
     // All the pooling object should inherit form this base class
     public abstract class PoolObject : MonoBehaviour
     {
-        public void EnableObject(bool enable)
+        public virtual void EnableObject(bool enable)
         {
             gameObject.SetActive(enable);
         }
@@ -60,7 +60,7 @@ namespace BoxDash.Utility {
                     // Resign it into the queue.
                     m_PoolDictionary[key].Enqueue(reuseObject);
                     // Call the reuse method.
-                    reuseObject.Reuse(position, rotation, options);
+                    reuseObject.Reuse(position, rotation);
 
                     return reuseObject;
                 }

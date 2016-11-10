@@ -7,48 +7,41 @@ using Random = UnityEngine.Random;
 
 namespace BoxDash.Tile
 {
-    //public class MapChunk {
-    //    public Transform Root;
-    //    public List<List<MapTile>> MapList = new List<List<MapTile>>();
-
-    //    public MapTile GetTile(int row, int column)
-    //    {
-    //        if (row < 0 && column < 0) return null;
-    //        return MapList[row][column];
-    //    }
-
-    //    public void AddRowOfTiles(int row, List<MapTile> tiles) {
-    //        MapList.Add(new List<MapTile>(tiles));
-    //    }
-
-    //    public void ResetTiles() {
-    //        foreach (var rows in MapList)
-    //        {
-    //            foreach (var tiles in rows)
-    //            {
-    //                tiles.ResetTile(MapManager.Instance.GenerateObstacles());
-    //            }
-    //            // At lease one tile is safty for passing.
-    //            rows[Random.Range(1, MapManager.MaxNumberOfTilesOnRow - 2)].ResetTile(TileTypes.Floor);
-    //        }
-
-    //    }
-    //}
-
     /// <summary>
     /// This class manager all the map content in game.
     /// Included map tile gameObject loading and danmacy map creation.
     /// </summary>
     public class MapManager : Singleton<MapManager>
     {
+        #region Events
+        private void OnEnable()
+        {
+            EventCenter.GameStartEvent += OnGameStarted;
+            EventCenter.PlayerMovedOnMapEvent += OnPlayerMoved;
+        }
+
+        private void OnDisable()
+        {
+            EventCenter.GameStartEvent -= OnGameStarted;
+            EventCenter.PlayerMovedOnMapEvent -= OnPlayerMoved;
+        }
+        #endregion
+
         #region Public varibales
         // ---------- Public varibales -----------
         [Tooltip("The main there color of the whole map.")]
+        public GameObject m_FloorTilePrefab = null;
+        public GameObject m_WallTilePrefab = null;
+        public GameObject m_HoleTilePrefab = null;
+        public GameObject m_FloorSpikesTilePrefab = null;
+        public GameObject m_SkySpikesTilePrefab = null;
+
         // The main theme color of the map.
         public Color32 MapThemeColor = Color.white;
         // The color of the trace that will be left behind on 
         // those tiles where the player step on.
         public Color32 PlayerTraceColor = Color.white;
+        public Color32 TrapTileColor = Color.white;
 
         public int GetMaximunTilesOnColnum {
             get { return MaxNumberOfTilesOnColumn; }
@@ -68,17 +61,34 @@ namespace BoxDash.Tile
         private const int LengthOfPreTrack = 30;
         private const int NumberOfPreGenerateTracks = 2;
 
+        // We have to ensure that at least one tile is 
+        // save to pass into the exit row for the player. 
+        private int m_SafePathTileColumnIndex = 0;
+
+        private bool m_KeepCollapsing = false;
+        // Keep tracking the player progress.
+        private int m_TrackPassedCount = 0;
+
         // A pool of 2 tracks contains 20 rows of tiles each.
-        public List<TileBase>[,] m_TrackPool = new List<TileBase>[NumberOfPreGenerateTracks, LengthOfPreTrack];
+        private List<TileBase>[,] m_TilePool = new List<TileBase>[NumberOfPreGenerateTracks, LengthOfPreTrack];
 
         // The chance of a tile being a hole on the ground.
-        private int m_ChanceOfHole = 1;
+        private int m_ChanceOfHole = 5;
+        private const int m_ChanceIncreasePreUpdate_Hole = 1;
+        private const int m_MaximunChanceOfHole = 30;
+        private int m_ChanceOfFloorSpikes = m_MaximunChanceOfHole;
+        private const int m_ChanceIncreasePreUpdate_FloorSpikes = 1;
+        private const int m_MaximunChanceOfFloorSpikes = 50;
+        private int m_ChanceOfSkySpikes = m_MaximunChanceOfFloorSpikes;
+        private const int m_ChanceIncreasePreUpdate_SkySpikes = 1;
+        private const int m_MaximunChanceOfSkySpikes = 70;
         #endregion
 
         // Calualate the diagonal line across the tile qube, as long as the
         // tile is a square, the diagonal line's lenght should be (2^2 * (length of side)). 
         // private static readonly float m_MapChunkOffset = LengthOfMapChunk * GameManager.TileOffset;
 
+        #region Private methods
         /// <summary>
         /// Use this to init the map manager when game start.
         /// </summary>
@@ -91,11 +101,46 @@ namespace BoxDash.Tile
             CreateTrack();
         }
 
-        public TileBase GetTile(int rowIndex, int columnIndex) {
-            if (rowIndex < 0 && (columnIndex <= 0 && columnIndex == MaxNumberOfTilesOnColumn)) return null;
-            int rowIndexOnTrack = rowIndex % (LengthOfPreTrack * NumberOfPreGenerateTracks);
-            int trackIndex = rowIndexOnTrack < LengthOfPreTrack ? 0 : 1;
-            return m_TrackPool[trackIndex, rowIndexOnTrack][columnIndex];
+        /// <summary>
+        /// Load all the game resources form the resource folder.
+        /// </summary>
+        private void InitGameResources()
+        {
+            // Calculate how many objects we need in the pool.
+            int needPoolSize = LengthOfPreTrack * MaxNumberOfTilesOnColumn * NumberOfPreGenerateTracks;
+            const string prefabFolderName = "Tiles";
+
+            if (!m_FloorTilePrefab)
+                ResourcesLoader.Load("Floor", out m_FloorTilePrefab, prefabFolderName);
+            CreateObjectPool(m_FloorTilePrefab, needPoolSize - LengthOfPreTrack * 3);
+
+            if (!m_WallTilePrefab)
+                ResourcesLoader.Load("Wall", out m_WallTilePrefab, prefabFolderName);
+            CreateObjectPool(m_WallTilePrefab, LengthOfPreTrack * 2);
+
+            if (!m_HoleTilePrefab)
+                ResourcesLoader.Load("Hole", out m_HoleTilePrefab, prefabFolderName);
+            CreateObjectPool(m_HoleTilePrefab, LengthOfPreTrack * MaxNumberOfTilesOnColumn);
+
+            if (!m_FloorSpikesTilePrefab)
+                ResourcesLoader.Load("FloorSpikes", out m_FloorSpikesTilePrefab, prefabFolderName);
+            CreateObjectPool(m_FloorSpikesTilePrefab, LengthOfPreTrack * MaxNumberOfTilesOnColumn);
+
+            if (!m_SkySpikesTilePrefab)
+                ResourcesLoader.Load("SkySpikes", out m_SkySpikesTilePrefab, prefabFolderName);
+            CreateObjectPool(m_SkySpikesTilePrefab, LengthOfPreTrack * MaxNumberOfTilesOnColumn);
+        }
+
+        private void CreateObjectPool(GameObject prefab, int poolSize) {
+            ObjectPoolManager.Instance.CreaterPool(
+                prefab.GetComponent<TileBase>().GetTileType().ToString(),
+                prefab.GetComponent<PoolObject>(),
+                this.transform, poolSize);
+        }
+
+        private void OnGameStarted()
+        {
+            // m_KeepCollapsing = true;
         }
 
         /// <summary>
@@ -103,16 +148,138 @@ namespace BoxDash.Tile
         /// once the player passed a specific checkpoint the map
         /// will keep generate new track ahead.
         /// </summary>
-        private void CreateTrack() {
+        private void CreateTrack()
+        {
+            // Pick a random tile (Wall is not included) as the start of the safe path.
+            m_SafePathTileColumnIndex = Random.Range(1, GetMaximunTilesOnColnum - 1);
             for (int trackIndex = 0; trackIndex < NumberOfPreGenerateTracks; trackIndex++)
             {
                 for (int rowIndex = 0; rowIndex < LengthOfPreTrack; rowIndex++)
                 {
-                    m_TrackPool[trackIndex, rowIndex] = ResetRowsOfTile(
+                    // Create a new row of slots for those tiles.
+                    m_TilePool[trackIndex, rowIndex] = new List<TileBase>();
+                    ResetRowOfTiles(
+                        m_TilePool[trackIndex, rowIndex],
                         rowIndex + trackIndex * LengthOfPreTrack,
                         // Check if current row is a odd or even.
                         ((rowIndex % 2 == 0) ? true : false));
                 }
+            }
+        }
+
+        /// <summary>
+        /// After the player moved, check where the player is standing on.
+        /// </summary>
+        /// <param name="currentTile">The tile where the player box is standing on.</param>
+        private void OnPlayerMoved(TileBase currentTile) {
+            switch (currentTile.GetTileType()) {
+                case TileTypes.Floor:
+                    currentTile.UseTile(
+                        currentTile.CurrentLocation.Y % 2 == 0 ?
+                        PlayerTraceColor.ChangeColorBrightness(-0.2f) : PlayerTraceColor);
+                    break;
+                case TileTypes.Hole:
+                    // Whpoos..
+                    EventCenter.OnGameOver(CauseOfGameOver.FallInHole);
+                    return;
+                case TileTypes.FloorSpikes:
+                    currentTile.UseTile(
+                        currentTile.CurrentLocation.Y % 2 == 0 ?
+                        PlayerTraceColor.ChangeColorBrightness(-0.2f) : PlayerTraceColor);
+                    break;
+                case TileTypes.SkySpikes:
+                    currentTile.UseTile(
+                        currentTile.CurrentLocation.Y % 2 == 0 ?
+                        PlayerTraceColor.ChangeColorBrightness(-0.2f) : PlayerTraceColor);
+                    break;
+                default:
+                    break;
+            }
+
+            UpdateTrackCheck(currentTile);
+        }
+
+        private void UpdateTrackCheck(TileBase currentTile) {
+            // If player passed half of the track.
+            if (currentTile.CurrentLocation.Y % LengthOfPreTrack == 13)
+            {
+                m_TrackPassedCount = currentTile.CurrentLocation.Y / LengthOfPreTrack;
+                // We don't need to update the track when player 
+                // is still at the first part of the track.
+                if (m_TrackPassedCount != 0)
+                {
+
+                    Debug.Log("Update! " + m_TrackPassedCount);
+
+                    // The rise the difficulty.
+                    RaisTrapGenerateChance();
+
+                    // Reset the track behind this track.
+                    ResetOldTrack(m_TrackPassedCount);
+
+                    // Reset the collaping of the track which the player is on.
+                    // StartTrackCollpasing(m_TrackPassedCount % 2);
+                }
+            }
+        }
+
+        private void RaisTrapGenerateChance() {
+            if (m_ChanceOfHole <= m_MaximunChanceOfHole) {
+                m_ChanceOfHole += m_ChanceIncreasePreUpdate_Hole;
+            }
+            if (m_ChanceOfFloorSpikes <= m_MaximunChanceOfFloorSpikes) {
+                m_ChanceOfFloorSpikes += m_ChanceIncreasePreUpdate_FloorSpikes;
+            }
+            if (m_ChanceOfSkySpikes <= m_MaximunChanceOfSkySpikes) {
+                m_ChanceOfSkySpikes += m_ChanceIncreasePreUpdate_SkySpikes;
+            }
+        }
+
+        private void ResetOldTrack(int trackPassedCount) {
+            int oldTrackIndex = (trackPassedCount % 2 == 0) ? 1 : 0;
+            for (int rowIndexInTrack = 0; rowIndexInTrack < LengthOfPreTrack; rowIndexInTrack++)
+            {
+                ResetRowOfTiles(
+                    m_TilePool[oldTrackIndex, rowIndexInTrack],
+                    rowIndexInTrack + ((trackPassedCount + 1) * LengthOfPreTrack),
+                    (rowIndexInTrack % 2 == 0) ? true : false);
+            }
+        }
+
+        /// <summary>
+        /// As long as this tile is not a wall,
+        /// we can random choice a tile type for this new tile.
+        /// </summary>
+        private TileTypes RandomTileType(int currentColumnIndex) {
+            // If this tile should be a save path.
+            if (currentColumnIndex == m_SafePathTileColumnIndex) {
+                return TileTypes.Floor;
+            }
+            // Generate a random number.
+            int RNGresult = Random.Range(0, 100);
+            if (m_ChanceOfSkySpikes > RNGresult && RNGresult > m_MaximunChanceOfFloorSpikes)
+                return TileTypes.SkySpikes;
+            if (m_ChanceOfFloorSpikes > RNGresult && RNGresult > m_MaximunChanceOfHole)
+                return TileTypes.FloorSpikes;
+            // If the generate chance is match and this tile is not on the safe path.
+            if (m_ChanceOfHole > RNGresult)
+                return TileTypes.Hole;
+            return TileTypes.Floor;
+        }
+
+        private Color32 SetTileColor(bool isOddRow, TileTypes type)
+        {
+            switch (type) {
+                case TileTypes.Wall:
+                    return m_MapWallTileColor;
+                case TileTypes.Floor:
+                    return (isOddRow ? MapThemeColor : m_SecondlyThemeColor);
+                case TileTypes.FloorSpikes:
+                    return TrapTileColor;
+                case TileTypes.SkySpikes:
+                    return TrapTileColor;
+                default:
+                    return MapThemeColor;
             }
         }
 
@@ -122,29 +289,49 @@ namespace BoxDash.Tile
         /// <param name="type">The diecded type of the tile.</param>
         /// <param name="worldPosition">The world position of the tile.</param>
         /// <returns>Return NULL when this tile is a hole or something went worry.</returns>
-        private TileBase ReuseTile(TileTypes type, Vector3 worldPosition, Quaternion rotation) {
-            ObjectInstance reuseTileObject = 
+        private TileBase ReuseTile(TileTypes type, Vector3 worldPosition, Quaternion rotation)
+        {
+            ObjectInstance reuseTileObject =
                 ObjectPoolManager.Instance.ReuseObject(type.ToString(), worldPosition, rotation);
             return reuseTileObject.Instance.GetComponent<TileBase>();
         }
 
-        /// <summary>
-        /// As long as this tile is not a wall,
-        /// we can random choice a tile type for this new tile.
-        /// </summary>
-        private TileTypes RandomTileType() {
-            // Generate a random number.
-            int randomResult = Random.Range(0, 100);
-            if (m_ChanceOfHole > randomResult)
-            {
-                return TileTypes.Hole;
+        private void AddTileIntoList(List<TileBase> theRow, TileBase tile, int index) {
+            // If the requested index is out of the list's range, 
+            // add a new slot for this tile.
+            if ((index + 1) > theRow.Count) {
+                theRow.Add(tile);
             }
-            return TileTypes.Floor;
+            // Else overwrite the exist data.
+            else {
+                if (tile.GetTileType() != TileTypes.Wall) theRow[index].EnableObject(false);
+                theRow[index] = tile;
+            }
         }
 
-        private Color32 SetTileColor(bool isOddRow, bool isWall) {
-            if (isWall) return m_MapWallTileColor;
-            return (isOddRow ? MapThemeColor : m_SecondlyThemeColor);
+        /// <summary>
+        /// After reuse the row of tiles, calulate the next save path for the track so we can
+        /// ensure this game can run untill forever as long as the player is good enough. 
+        /// </summary>
+        /// <param name="currentRowTileCount">The count of tiles on this row.</param>
+        private void EnsureNextSafePathTile(bool currentRowIsEven, int currentRowTileCount)
+        {
+            // Odd rows means no wall.
+            if (!currentRowIsEven && m_SafePathTileColumnIndex == 0)
+            {
+                m_SafePathTileColumnIndex++;
+            } else if (!currentRowIsEven && m_SafePathTileColumnIndex == (MaxNumberOfTilesOnColumn - 2)) {
+                // No need to do anything.
+            }
+            else
+            {
+                // Decide go right or go left
+                bool left = Random.Range(0, 2) == 0 ? false : true;
+                // If currently the safe path is on the even row and decide go left. 
+                if (currentRowIsEven && left) m_SafePathTileColumnIndex--;
+                // Else if currently the safe path is on the even row and decide go right. 
+                else if (!currentRowIsEven && !left) m_SafePathTileColumnIndex++;
+            }
         }
 
         /// <summary>
@@ -154,71 +341,79 @@ namespace BoxDash.Tile
         /// <param name="rowIndex">The current index of the row.</param>
         /// <param name="numberOfTilesOnColumn">The number of tiles on this column.</param>
         /// <returns></returns>
-        private List<TileBase> ResetRowsOfTile(int rowIndex, bool isOddRow) {
-            // Create a list for all those tiles that will be create on this column.
-            List<TileBase> column = new List<TileBase>();
+        private void ResetRowOfTiles(List<TileBase> theRow, int rowIndex, bool isEvenRow) {
             // A flag for identity which tile are normal and which are walls.
             bool isWall = false;
             // Depend on the index of the current row index the number of tiles on this column will change.
-            int numbserOfTiles = (isOddRow ? MaxNumberOfTilesOnColumn : MaxNumberOfTilesOnColumn - 1);
+            int numbserOfTiles = (isEvenRow ? MaxNumberOfTilesOnColumn : MaxNumberOfTilesOnColumn - 1);
             // Loop through the column. 
             for (int columnIndex = 0; columnIndex < numbserOfTiles; columnIndex++)
             {
                 // Only the rows on odd index has walls and only if it is on the first or last position of the column.  
-                isWall = (isOddRow && (columnIndex == 0 || columnIndex == (numbserOfTiles - 1)) ? true : false);
+                isWall = (isEvenRow && (columnIndex == 0 || columnIndex == (numbserOfTiles - 1)) ? true : false);
                 TileBase tile = ReuseTile(
                     // As long as this tile is not a wall, we can random choice a tile type for this new tile.
-                    isWall ? TileTypes.Wall : RandomTileType(),
-                    isOddRow ? new Vector3(columnIndex * TileBase.TileOffset - (TileBase.TileOffset / 2), 0, rowIndex * (TileBase.TileOffset / 2)) :
+                    isWall ? TileTypes.Wall : RandomTileType(columnIndex),
+                    isEvenRow ? new Vector3(columnIndex * TileBase.TileOffset - (TileBase.TileOffset / 2), 0, rowIndex * (TileBase.TileOffset / 2)) :
                                new Vector3(columnIndex * TileBase.TileOffset,  0, rowIndex * (TileBase.TileOffset / 2)),
                     TileBase.TileFixedQuaternion);
 
                 // Initialize the new tile.
-                tile.Init(SetTileColor(!isOddRow, isWall));
+                tile.Init(rowIndex, columnIndex, SetTileColor(!isEvenRow, tile.GetTileType()));
 #if UNITY_EDITOR
                 // For debuging.
-                tile.gameObject.name = (isOddRow ? "Even" : "Odd") + " [ " + rowIndex + ", " + columnIndex + " ]";
+                tile.gameObject.name = tile.GetTileType().ToString() + " " + (isEvenRow ? "Even" : "Odd") + " [ " + rowIndex + ", " + columnIndex + " ]";
 #endif
-                column.Add(tile);
+                AddTileIntoList(theRow, tile, columnIndex);
             }
-            return column;
+            EnsureNextSafePathTile(isEvenRow, numbserOfTiles);
         }
 
+        #region Tile collapse
+        private void OnTileCollapse(TileBase tile) {
+            tile.Collapse();
+            if (GameManager.PlayerBox.PlayerLocation.Y <= tile.CurrentLocation.Y) {
+                // Hide the tile right under the player box so user can clear see how it falls.
+                tile.EnableObject(false);
+                // Stop further collapsing.
+                m_KeepCollapsing = false;
+                EventCenter.GameOverEvent(CauseOfGameOver.OnCollapsedTile);
+            }
+        }
+
+        int collapseRowIndex = 0;
+        int timer = 0;
+        int timerStamp = 20;
+        private void FixedUpdate() {
+            if (m_KeepCollapsing && collapseRowIndex < LengthOfPreTrack) {
+                timer++;
+                if (timer > timerStamp) {
+                    foreach (var tile in m_TilePool[m_TrackPassedCount % 2, collapseRowIndex++])
+                    {
+                        OnTileCollapse(tile);
+                    }
+                    timer = 0;
+                    collapseRowIndex %= LengthOfPreTrack;
+                }
+            }
+        }
+        #endregion
+
+        #endregion
+
         /// <summary>
-        /// Load all the game resources form the resource folder.
+        /// Get the specific tile in the track.
         /// </summary>
-        private void InitGameResources() {
-            // The prefab of the map floor tile.
-            GameObject m_FloorTilePrefab = null;
-            // The prefab of the map wall tile.
-            GameObject m_WallTilePrefab = null;
-            // The prefab of the map hole tile.
-            GameObject m_HoleTilePrefab = null;
-
-            // Calculate how many objects we need in the pool.
-            int needPoolSize = LengthOfPreTrack * MaxNumberOfTilesOnColumn * NumberOfPreGenerateTracks;
-
-            ResourcesLoader.Load("Floor", out m_FloorTilePrefab, "Map");
-            ObjectPoolManager.Instance.CreaterPool(
-                m_FloorTilePrefab.GetComponent<TileBase>().GetTileType().ToString(),
-                m_FloorTilePrefab.GetComponent<PoolObject>(), 
-                this.transform,
-                // Holds two sets of floor tiles.
-                needPoolSize - LengthOfPreTrack * 3);
-
-            ResourcesLoader.Load("Wall", out m_WallTilePrefab, "Map");
-            ObjectPoolManager.Instance.CreaterPool(
-                m_WallTilePrefab.GetComponent<TileBase>().GetTileType().ToString(),
-                m_WallTilePrefab.GetComponent<PoolObject>(),
-                this.transform,
-                LengthOfPreTrack * NumberOfPreGenerateTracks);
-
-            ResourcesLoader.Load("Hole", out m_HoleTilePrefab, "Map");
-            ObjectPoolManager.Instance.CreaterPool(
-                m_HoleTilePrefab.GetComponent<TileBase>().GetTileType().ToString(),
-                m_HoleTilePrefab.GetComponent<PoolObject>(),
-                this.transform,
-                LengthOfPreTrack * MaxNumberOfTilesOnColumn);
+        /// <param name="rowIndex">The actul row index of the track.</param>
+        /// <param name="columnIndex">The index on column.</param>
+        /// <returns></returns>
+        public TileBase GetTile(int rowIndex, int columnIndex)
+        {
+            // Check if the out if range
+            if (rowIndex < 0 && (columnIndex <= 0 && columnIndex == MaxNumberOfTilesOnColumn)) return null;
+            // Since there only 2 tracks exist, we have to find out witch one the player box is on.
+            int trackIndex = (rowIndex % (LengthOfPreTrack * NumberOfPreGenerateTracks)) < LengthOfPreTrack ? 0 : 1;
+            return m_TilePool[trackIndex, rowIndex % LengthOfPreTrack][columnIndex];
         }
     }
 }

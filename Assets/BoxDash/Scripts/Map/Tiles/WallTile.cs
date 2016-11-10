@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using BoxDash.Tile;
-using System;
 
 public class WallTile : TileBase
 {
@@ -9,17 +8,9 @@ public class WallTile : TileBase
         return TileTypes.Wall;
     }
 
-    public override void Init(Color32 tileColor)
+    public override void Init(int rowIndex, int columnIndex, Color32 tileColor)
     {
-        foreach (var render in GetComponentsInChildren<Renderer>())
-        {
-            // Change the apperence depend on its type.
-            render.material.color = tileColor;
-        }
-    }
-
-    public override void OnObjectReuse(params object[] options)
-    {
-        EnableObject(true);
+        base.Init(rowIndex, columnIndex, tileColor);
+        SetTileColor(tileColor);
     }
 }

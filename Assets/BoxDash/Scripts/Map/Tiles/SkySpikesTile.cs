@@ -2,7 +2,8 @@
 using BoxDash.Tile;
 using System;
 
-public class FloorTile : TileBase
+[RequireComponent(typeof(Animator))]
+public class SkySpikesTile : TileBase
 {
     #region Public varibales
     public Renderer UpperMesh;
@@ -11,13 +12,15 @@ public class FloorTile : TileBase
 
     public override TileTypes GetTileType()
     {
-        return TileTypes.Floor;
+        return TileTypes.SkySpikes;
     }
 
     public override void Init(int rowIndex, int columnIndex, Color32 tileColor)
     {
         base.Init(rowIndex, columnIndex, tileColor);
+        // Reset the upper mesh's color.
         SetTileColor(tileColor);
+        m_Animator.SetBool("Active", true);
     }
 
     public override void SetTileColor(Color32 tileColor)
@@ -29,7 +32,6 @@ public class FloorTile : TileBase
     public override void OnObjectReuse(params object[] options)
     {
         base.OnObjectReuse(options);
-        // Reset upper mesh color.
         UpperMesh.material.color = OriginalColor;
     }
 
@@ -37,5 +39,11 @@ public class FloorTile : TileBase
     {
         base.UseTile();
         UpperMesh.material.color = (Color32)(options[0]);
+    }
+
+    public override void Collapse()
+    {
+        base.Collapse();
+        m_Animator.SetBool("Active", false);
     }
 }

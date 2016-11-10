@@ -1,11 +1,39 @@
 ﻿using UnityEngine;
+using Random = UnityEngine.Random;
 using BoxDash.Utility;
+using System.Collections.Generic;
 
 namespace BoxDash.Tile {
     public enum TileTypes {
         Floor = 0,
-        Wall = 1,
+        Wall,
         Hole,
+        FloorSpikes,
+        SkySpikes,
+    }
+
+    public class Location2D {
+        private int m_LocationX = 0;
+        private int m_LocationY = 0;
+
+        public int X {
+            get { return m_LocationX; }
+            set { m_LocationX = value; }
+        }
+
+        public int Y {
+            get { return m_LocationY; }
+            set { m_LocationY = value; }
+        }
+
+        public void SetLocation(int x, int y)
+        {
+            m_LocationX = x; m_LocationY = y;
+        }
+
+        public Location2D() {
+            m_LocationX = 0; m_LocationY = 0;
+        }
     }
 
     [RequireComponent(typeof(Rigidbody))]
@@ -24,22 +52,78 @@ namespace BoxDash.Tile {
         {
             get; private set;
         }
+
+        // Keep tracking the position where this tile repersened to.
+        public Location2D CurrentLocation = new Location2D();
         #endregion
 
         #region Private variables
-        private Rigidbody m_RigidBody;
+        protected Rigidbody m_RigidBody;
+        protected List<Renderer> m_RendererComponents = new List<Renderer>();
+        protected Animator m_Animator;
         #endregion
 
+        public virtual void Init(int rowIndex, int columnIndex, Color32 tileColor) {
+            CurrentLocation.SetLocation(columnIndex, rowIndex);
+            StopFalling();
+        }
 
-        public abstract void Init(Color32 tileColor);
+        public virtual void SetTileColor(Color32 tileColor) {
+            foreach (var render in m_RendererComponents)
+            {
+                render.material.color = tileColor;
+            }
+        }
 
         public override void InitPoolObject() {
             IsCollapsed = false;
             m_RigidBody = GetComponent<Rigidbody>();
             m_RigidBody.useGravity = false;
+
+            foreach (var render in GetComponentsInChildren<Renderer>())
+            {
+                m_RendererComponents.Add(render);
+            }
+
+            m_Animator = GetComponent<Animator>();
+        }
+
+        public override void EnableObject(bool enable)
+        {
+            base.EnableObject(enable);
+            // When enabling the tiles it will stay at where it should be,
+            // and when disabling the tiles it should not keep falling down, so
+            // whatever the condition is, it should not be affect by physics
+            // unleast it is call by collapse().
+            StopFalling();
+        }
+
+        public virtual void UseTile(params object[] options)
+        {
+            // Empty
+        }
+
+        public virtual void Collapse() {
+            IsCollapsed = true;
+            m_RigidBody.useGravity = true;
+            m_RigidBody.angularVelocity = new Vector3(
+                Random.Range(0.0f, 1.0f),
+                Random.Range(0.0f, 1.0f),
+                Random.Range(0.0f, 1.0f)) * (Random.Range(1, 10));
         }
 
         public abstract TileTypes GetTileType();
+
+        private void StopFalling() {
+            // Stop falling down.
+            IsCollapsed = false;
+            m_RigidBody.useGravity = false;
+        }
+
+        public override void OnObjectReuse(params object[] options)
+        {
+            StopFalling();
+        }
 
         //public TileTypes GetTileType {
         //    get { return m_TileType; }
@@ -126,6 +210,5 @@ namespace BoxDash.Tile {
         //    UpperMesh.material.color = OriginalUpperMeshColor;
         //    DisplayTile(false);
         //}
-
     }
 }

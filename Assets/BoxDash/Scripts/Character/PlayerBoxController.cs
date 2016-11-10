@@ -13,105 +13,105 @@ namespace BoxDash.Player {
         #region Delegate and Events
         private void OnEnable()
         {
-            GameManager.GameOverEvent += OnGameOver;
+            EventCenter.GameStartEvent += OnGameStart;
+            EventCenter.GameOverEvent += OnGameOver;
         }
 
         private void OnDisable()
         {
-            GameManager.GameOverEvent -= OnGameOver;
+            EventCenter.GameStartEvent -= OnGameStart;
+            EventCenter.GameOverEvent -= OnGameOver;
         }
         #endregion
 
         #region Public variables
         // ---------- Public variables ------------
-        public int PlayerOnY {
-            get;private set;
-        }
-        public int PlayerOnX
-        {
-            get; private set;
-        }
+        public Location2D PlayerLocation = new Location2D();
         #endregion
 
         #region Private variables
-        private enum MoveDirection {
-            UpperLeft = 0,
+        private enum Direction {
+            None = 0,
+            UpperLeft,
             UpperRight,
         }
 
+        // We gonna use it when the player fall off the map.
         private Rigidbody m_RigidBody;
+        // A flag of the player control.
         private bool m_PlayerCanControl = false;
+        // The player box facing direction.
+        private Direction m_CurrentFacing = Direction.None;
         #endregion
 
-        public void Init(int onRow, int onColumn) {
-            PlayerOnY = onRow;
-            PlayerOnX = onColumn;
+        public void Init(int onRowIndex, int onColumnIndex) {
+            PlayerLocation.SetLocation(onColumnIndex, onRowIndex);
 
             // Shut off the player box's physics
             m_RigidBody = GetComponent<Rigidbody>();
             m_RigidBody.useGravity = false;
             m_RigidBody.velocity = Vector3.zero;
-
             this.transform.rotation = TileBase.TileFixedQuaternion;
 
-            SetPlayerLocation(PlayerOnY, PlayerOnX);
-            // Temp
-            // GameManager.OnGameStart();
+            SetPlayerLocation(PlayerLocation.Y, PlayerLocation.X);
+        }
+
+        private void OnGameStart() {
             m_PlayerCanControl = true;
         }
 
-        private void MoveBoxAndCheckIfMapNeedsUpdate(MoveDirection direction, int unit = 1) {
+        private void MoveBoxAndCheckIfMapNeedsUpdate(Direction direction, int unit = 1) {
             switch (direction) {
-                case MoveDirection.UpperLeft:
+                case Direction.UpperLeft:
                     for (int i = 0; i < unit; i++)
                     {
                         // Reach the left map border.
-                        if (PlayerOnY % 2 != 0 && PlayerOnX == 0) break;
+                        if (PlayerLocation.Y % 2 != 0 && PlayerLocation.X == 0) break;
                         // Loop the index between 0 and LengthOfMapChunk * NumberOfMapChunk.
-                        if (PlayerOnY % 2 != 0)
+                        if (PlayerLocation.Y % 2 != 0)
                         {
-                            SetPlayerLocation(++PlayerOnY, PlayerOnX);
+                            SetPlayerLocation(++PlayerLocation.Y, PlayerLocation.X);
                         }
                         else {
-                            SetPlayerLocation(++PlayerOnY, --PlayerOnX);
+                            SetPlayerLocation(++PlayerLocation.Y, --PlayerLocation.X);
                         }
                     } 
                     break;
-                case MoveDirection.UpperRight:
+                case Direction.UpperRight:
                     for (int i = 0; i < unit; i++)
                     {
                         // Reach the right map border.  
-                        if (PlayerOnY % 2 != 0 && PlayerOnX == MapManager.Instance.GetMaximunTilesOnColnum - 2) break;
+                        if (PlayerLocation.Y % 2 != 0 && PlayerLocation.X == MapManager.Instance.GetMaximunTilesOnColnum - 2) break;
                         // Loop the index between 0 and LengthOfMapChunk * NumberOfMapChunk.
-                        if (PlayerOnY % 2 != 0) {
-                            SetPlayerLocation(++PlayerOnY, ++PlayerOnX);
+                        if (PlayerLocation.Y % 2 != 0) {
+                            SetPlayerLocation(++PlayerLocation.Y, ++PlayerLocation.X);
                         }
                         else {
-                            SetPlayerLocation(++PlayerOnY, PlayerOnX);
+                            SetPlayerLocation(++PlayerLocation.Y, PlayerLocation.X);
                         }
                     }
                     break;
                 default:
                     // No way this will get call...
-                    SetPlayerLocation(PlayerOnY, PlayerOnX);
+                    SetPlayerLocation(PlayerLocation.Y, PlayerLocation.X);
                     break;
             }
         }
 
-        private void SetPlayerLocation(int locationX, int locationY) {
-            TileBase currentTile = MapManager.Instance.GetTile(locationX, locationY);
+        private void SetPlayerLocation(int locationY, int locationX, Direction direction = Direction.None) {
+            TileBase currentTile = MapManager.Instance.GetTile(locationY, locationX);
             // Reset player box object location.
             this.transform.position = currentTile.transform.position;
             // this.transform.position = MapManager.Instance.GetTile(locationX, locationY).transform.position;
             // Lift it up to the ground.
             this.transform.position += new Vector3(0, TileBase.TileSideLength / 2, 0);
-            // Check if the map needs update.
-            EventCenter.OnPlayerMoved(PlayerOnY, PlayerOnX, this.transform.position);
 
-            //// Whops
-            //if (currentTile.GetTileType == TileTypes.Hole) {
-            //    GameManager.OnGameOver(CauseOfGameOver.FallInHole);
-            //}
+            if (direction != Direction.None) {
+                // TODO
+            }
+
+            // Check if the map needs update.
+            EventCenter.OnPlayerMoved(currentTile, this.transform.position);
         }
 
         private void OnGameOver(CauseOfGameOver cause) {
@@ -133,8 +133,6 @@ namespace BoxDash.Player {
                     m_PlayerCanControl = false;
                     break;
             }
-
-
         }
 
         private void Update()
@@ -142,12 +140,12 @@ namespace BoxDash.Player {
             if (m_PlayerCanControl) { 
                 if (Input.GetKeyDown(KeyCode.A))
                 {
-                    MoveBoxAndCheckIfMapNeedsUpdate(MoveDirection.UpperLeft);
+                    MoveBoxAndCheckIfMapNeedsUpdate(Direction.UpperLeft);
 
                 }
                 if(Input.GetKeyDown(KeyCode.D))
                 {
-                    MoveBoxAndCheckIfMapNeedsUpdate(MoveDirection.UpperRight);
+                    MoveBoxAndCheckIfMapNeedsUpdate(Direction.UpperRight);
                 }
             }
         }

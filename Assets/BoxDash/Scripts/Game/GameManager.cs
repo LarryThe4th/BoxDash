@@ -9,25 +9,13 @@ namespace BoxDash {
         OnCollapsedTile = 0,
         FallInHole
     }
-
     /// <summary>
     /// The root class of the whole game.
     /// </summary>
     public class GameManager : Singleton<GameManager>
     {
         #region Delegate and Events
-        public delegate void OnEvent();
-        public static OnEvent GameStartEvent;
-        public static void OnGameStart() {
-            if (GameStartEvent != null) GameStartEvent();
-        }
 
-        public delegate void GameOver(CauseOfGameOver cause);
-        public static GameOver GameOverEvent;
-        public static void OnGameOver(CauseOfGameOver cause)
-        {
-            if (GameOverEvent != null) GameOverEvent(cause);
-        }
         #endregion
 
         #region Public varibales
@@ -45,6 +33,8 @@ namespace BoxDash {
             // Initialize the player object.
             if (!PlayerBox) PlayerBox = CreateCharacter();
             PlayerBox.Init(4, 3);
+
+            EventCenter.OnGameStart();
         }
 
         private PlayerBoxController CreateCharacter()
