@@ -325,9 +325,9 @@ namespace BoxDash.Map
             }
             // Else overwrite the exist data.
             else {
-                if (tile.GetTileType() != TileTypes.Wall) {
-                    theRow[index].EnableObject(false);
-                } 
+                //if (tile.GetTileType() != TileTypes.Wall) {
+                //    theRow[index].EnableObject(false);
+                //} 
                 theRow[index] = tile;
             }
         }
