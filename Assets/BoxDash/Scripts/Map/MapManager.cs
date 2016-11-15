@@ -372,6 +372,12 @@ namespace BoxDash.Map
             // Loop through the column. 
             for (int columnIndex = 0; columnIndex < numbserOfTiles; columnIndex++)
             {
+
+                if (rowIndex >= 60) {
+                    Debug.Log("From here");
+                }
+
+
                 // Only the rows on odd index has walls and only if it is on the first or last position of the column.  
                 isWall = (isEvenRow && (columnIndex == 0 || columnIndex == (numbserOfTiles - 1)) ? true : false);
                 TileBase tile = ReuseTile(

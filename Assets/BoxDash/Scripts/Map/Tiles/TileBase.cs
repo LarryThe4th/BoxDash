@@ -123,12 +123,12 @@ namespace BoxDash.Tile {
             StartCoroutine(StopFallingAfterCollapsed(1f));
         }
 
-        public override void OnObjectReuse(params object[] options)
-        {
-            base.OnObjectReuse(options);
-            StopCoroutine(StopFallingAfterCollapsed(0));
-            StopFalling();
-        }
+        //public override void OnObjectReuse(params object[] options)
+        //{
+        //    base.OnObjectReuse(options);
+        //    StopCoroutine(StopFallingAfterCollapsed(0));
+        //    StopFalling();
+        //}
 
         private IEnumerator StopFallingAfterCollapsed(float wait) {
             yield return new WaitForSeconds(wait);
