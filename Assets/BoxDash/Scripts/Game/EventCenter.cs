@@ -32,5 +32,11 @@ namespace BoxDash
         {
             if (GameStartEvent != null) GameStartEvent();
         }
+
+        public static OnEvent UpdateUIEvent;
+        public static void OnUpdateUI()
+        {
+            if (UpdateUIEvent != null) UpdateUIEvent();
+        }
     }
 }

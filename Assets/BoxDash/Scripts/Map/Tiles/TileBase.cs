@@ -35,6 +35,10 @@ namespace BoxDash.Tile {
         public Location2D() {
             m_LocationX = 0; m_LocationY = 0;
         }
+
+        public Location2D(int x, int y) {
+            m_LocationX = x; m_LocationY = y;
+        }
     }
 
     [RequireComponent(typeof(Rigidbody))]

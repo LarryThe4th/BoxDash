@@ -1,7 +1,5 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
-using System.Collections;
-using System;
 
 namespace BoxDash.UI
 {
@@ -16,9 +14,9 @@ namespace BoxDash.UI
         private Button HelpButton;
         #endregion
 
-        public override UIManager.UIs GetUIType()
+        public override UIManager.SceneUIs GetUIType()
         {
-            return UIManager.UIs.MainMenu;
+            return UIManager.SceneUIs.MainMenu;
         }
 
         public override void Init()
@@ -29,8 +27,12 @@ namespace BoxDash.UI
             if (!SoundButton) Debug.Log("SoundButton not set.");
             if (!HelpButton) Debug.Log("HelpButton not set.");
 #endif
-            // PlayGameButton.
-            // throw new NotImplementedException();
+            PlayGameButton.onClick.AddListener(delegate { OnPressPlayGameButton(); });
+            m_IsDisplaying = false;
+        }
+
+        private void OnPressPlayGameButton() {
+            UIManager.Instance.SwitchSceneUI(UIManager.SceneUITransition.MainMenuToGame);
         }
 
         private void OpeningSequence() {
@@ -38,11 +40,13 @@ namespace BoxDash.UI
 
         public override void HideUI()
         {
+            base.HideUI();
             m_Animator.SetBool("HideMainMenu", true);
         }
 
         public override void ShowUI()
         {
+            base.ShowUI();
             m_Animator.SetBool("HideMainMenu", false);
         }
     }

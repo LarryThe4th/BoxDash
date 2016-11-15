@@ -2,7 +2,7 @@
 using System.Collections;
 
 namespace BoxDash.Utility {
-    public class Singleton<T> : MonoBehaviour
+    public abstract class Singleton<T> : MonoBehaviour
         where T : Component
     {
         private static T m_Instance;
@@ -17,7 +17,9 @@ namespace BoxDash.Utility {
                         m_Instance = objs[0];
                     if (objs.Length > 1)
                     {
+#if UNITY_EDITOR
                         Debug.LogError("There is more than one " + typeof(T).Name + " in the scene.");
+#endif
                     }
                     if (m_Instance == null)
                     {

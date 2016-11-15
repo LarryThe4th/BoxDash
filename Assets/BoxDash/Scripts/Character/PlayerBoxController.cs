@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using BoxDash.Tile;
+using BoxDash.Map;
 using BoxDash.Utility;
 using Random = UnityEngine.Random;
 
@@ -29,6 +30,15 @@ namespace BoxDash.Player {
         #region Public variables
         // ---------- Public variables ------------
         public static PlayerBoxController PlayerInstance;
+
+        // Since this game currently is just a single player game,
+        // the key use for identily save data can be static.
+        private static string m_PlayerName = "PlayerBox";
+        public static string GetPlayerName
+        {
+            get { return m_PlayerName; }
+        }
+
         public Location2D PlayerLocation = new Location2D();
         #endregion
 
@@ -57,8 +67,8 @@ namespace BoxDash.Player {
             PlayerInstance = player.GetComponent<PlayerBoxController>();
         }
 
-        public void SetRespawnPosition(int onRowIndex, int onColumnIndex) {
-            PlayerLocation.SetLocation(onColumnIndex, onRowIndex);
+        public void Respawn(Location2D respawnLocation) {
+            PlayerLocation.SetLocation(respawnLocation.X, respawnLocation.Y);
 
             // Shut off the player box's physics
             m_RigidBody = GetComponent<Rigidbody>();

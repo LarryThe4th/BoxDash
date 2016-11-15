@@ -45,6 +45,105 @@ namespace BoxDash.SaveAndLoad {
         }
 
         /// <summary>
+        /// Try load data from loacl storage based on the given key.
+        /// </summary>
+        /// <param name="key">The key for the target save data.</param>
+        /// <param name="data">The local variable use for receive the loaded data.</param>
+        /// <param name="defaultValue">The default value for the local variable in case can't find the match key in the database. </param>
+        /// <returns>If key exist in the database, return TRUE.</returns>
+        public static bool LoadData(string key, ref int data, int defaultValue = 0) {
+            if (PlayerPerfabHasKey(key)) {
+                data = GetIntFormPlayerPerf(key); return true;
+            }
+            SetIntToPlayerPerf(key, defaultValue);
+            data = defaultValue;
+            return false;
+        }
+
+        /// <summary>
+        /// Try load data from loacl storage based on the given key.
+        /// </summary>
+        /// <param name="key">The key for the target save data.</param>
+        /// <param name="data">The local variable use for receive the loaded data.</param>
+        /// <param name="defaultValue">The default value for the local variable in case can't find the match key in the database. </param>
+        /// <returns>If key exist in the database, return TRUE.</returns>
+        public static bool LoadData(string key, ref string data, string defaultValue = "")
+        {
+            if (PlayerPerfabHasKey(key))
+            {
+                data = GetstringFormPlayerPerf(key); return true;
+            }
+            SetStringToPayerPerf(key, defaultValue);
+            data = defaultValue;
+            return false;
+        }
+
+        /// <summary>
+        /// Try load data from loacl storage based on the given key.
+        /// </summary>
+        /// <param name="key">The key for the target save data.</param>
+        /// <param name="data">The local variable use for receive the loaded data.</param>
+        /// <param name="defaultValue">The default value for the local variable in case can't find the match key in the database. </param>
+        /// <returns>If key exist in the database, return TRUE.</returns>
+        public static bool LoadData(string key, ref float data, float defaultValue = 0.0f)
+        {
+            if (PlayerPerfabHasKey(key))
+            {
+                data = GetIntFormPlayerPerf(key); return true;
+            }
+            SetFloatToPlayerPerf(key, defaultValue);
+            data = defaultValue;
+            return false;
+        }
+
+        /// <summary>
+        /// Try load data from loacl storage based on the given key.
+        /// </summary>
+        /// <param name="key">The key for the target save data.</param>
+        /// <param name="defaultValue">The default value for the local variable in case can't find the match key in the database. </param>
+        /// <returns></returns>
+        public static int LoadData(string key, int defaultValue = 0) {
+            if (PlayerPerfabHasKey(key))
+            {
+                return GetIntFormPlayerPerf(key);
+            }
+            SetIntToPlayerPerf(key, defaultValue);
+            return defaultValue;
+        }
+
+        /// <summary>
+        /// Try load data from loacl storage based on the given key.
+        /// </summary>
+        /// <param name="key">The key for the target save data.</param>
+        /// <param name="defaultValue">The default value for the local variable in case can't find the match key in the database. </param>
+        /// <returns></returns>
+        public static string LoadData(string key, string defaultValue = "")
+        {
+            if (PlayerPerfabHasKey(key))
+            {
+                return GetstringFormPlayerPerf(key);
+            }
+            SetStringToPayerPerf(key, defaultValue);
+            return defaultValue;
+        }
+
+        /// <summary>
+        /// Try load data from loacl storage based on the given key.
+        /// </summary>
+        /// <param name="key">The key for the target save data.</param>
+        /// <param name="defaultValue">The default value for the local variable in case can't find the match key in the database. </param>
+        /// <returns></returns>
+        public static float LoadData(string key, float defaultValue = 0.0f)
+        {
+            if (PlayerPerfabHasKey(key))
+            {
+                return GetFloatFormPlayerPerf(key);
+            }
+            SetFloatToPlayerPerf(key, defaultValue);
+            return defaultValue;
+        }
+
+        /// <summary>
         /// A wapper methd of the PlayerPrefs.SetFloat() method.
         /// </summary>
         /// <param name="key">The key you are looking for.</param>
@@ -92,11 +191,10 @@ namespace BoxDash.SaveAndLoad {
         }
 
         /// <summary>
-        /// The staic class constructor of the UserLoaclDataManager,
-        /// Clear all data when first time called.
+        /// The staic class constructor of the UserLoaclDataManager.
         /// </summary>
         static UserLoaclDataManager() {
-            DeleteAllKey();
+            // DeleteAllKey();
         }
     }
 }

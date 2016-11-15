@@ -4,8 +4,9 @@ using Random = UnityEngine.Random;
 using BoxDash.Tile;
 using BoxDash.Player;
 using BoxDash.Utility;
+using System;
 
-namespace BoxDash
+namespace BoxDash.Map
 {
     /// <summary>
     /// This class manager all the map content in game.
@@ -45,6 +46,8 @@ namespace BoxDash
         public int GetMaximunTilesOnColnum {
             get { return MaxNumberOfTilesOnColumn; }
         }
+
+        public static readonly Location2D PlayerRespawnLocation = new Location2D(3, 6);
         #endregion
 
         #region Private variables
@@ -101,7 +104,8 @@ namespace BoxDash
         /// <summary>
         /// Use this to init the map manager when game start.
         /// </summary>
-        public void Init() {
+        public void Init()
+        {
             InitGameResources();
             // Set the color of the wall tiles.
             m_MapWallTileColor = MapThemeColor.ChangeColorBrightness(-0.3f);

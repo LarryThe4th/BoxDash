@@ -11,24 +11,14 @@ namespace BoxDash.UI
         private Text CurrencyCountText;
         #endregion
 
-        public override UIManager.UIs GetUIType()
+        public override UIManager.SceneUIs GetUIType()
         {
-            return UIManager.UIs.Common;
+            return UIManager.SceneUIs.Common;
         }
 
         public override void Init()
         {
             base.Init();
-        }
-
-        public override void HideUI()
-        {
-            // Empty
-        }
-
-        public override void ShowUI()
-        {
-            // Empty
         }
     }
 }
