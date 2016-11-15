@@ -6,6 +6,7 @@ namespace BoxDash.UI
 {
     public class CommonUI : SceneUIBase
     {
+        /*
         #region Event
         private void OnEnable()
         {
@@ -17,7 +18,7 @@ namespace BoxDash.UI
             EventCenter.PlayerPickUpItemEvent -= OnPlayerPickupPoints;
         }
         #endregion
-
+        */
 
         #region Private varibales
         [SerializeField]
@@ -29,14 +30,10 @@ namespace BoxDash.UI
             return UIManager.SceneUIs.Common;
         }
 
-        public override void Init()
-        {
-            base.Init();
-            CurrencyCountText.text = ScoreManager.Instance.GetData(ScoreManager.ScoreTypes.Credit).ToString();
-        }
-
+        /*
         private void OnPlayerPickupPoints() {
             CurrencyCountText.text = ScoreManager.Instance.GetData(ScoreManager.ScoreTypes.Credit).ToString();
         }
+        */
     }
 }

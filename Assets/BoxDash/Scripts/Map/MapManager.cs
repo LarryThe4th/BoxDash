@@ -81,7 +81,7 @@ namespace BoxDash.Map
         private int m_Timer = 0;
         // The time limit for the timer. 
         // Samller the number, faster the track will collapse,
-        private int m_TimeBetweenCollapse = 8;
+        private int m_TimeBetweenCollapse = 10;
         // The collapsing row's index in the tile pool.
         private int m_CollapseRowIndex = 0;
         // Keep tracking how many tracks are collapsed.
@@ -100,11 +100,6 @@ namespace BoxDash.Map
         private const int m_ChanceIncreasePreUpdate_SkySpikes = 1;
         private const int m_MaximunChanceOfSkySpikes = 70;
         #endregion
-
-        //private readonly string m_CreditPointObjectPoolKey = "Points";
-        //private int m_CreditPointGenerateChance = 0;
-        //private int m_CreditPointGenerateChanceIncreasePreRow = 15;
-        //private const int m_CreditPointMaxGenerateChance = 100;
         #endregion
 
         #region Private methods
@@ -155,7 +150,8 @@ namespace BoxDash.Map
             CreateObjectPool(m_SkySpikesTilePrefab, LengthOfPreTrack * MaxNumberOfTilesOnColumn);
         }
 
-        private void CreateObjectPool(GameObject prefab, int poolSize) {
+        private void CreateObjectPool(GameObject prefab, int poolSize)
+        {
             ObjectPoolManager.Instance.CreaterPool(
                 prefab.GetComponent<TileBase>().GetTileType().ToString(),
                 prefab.GetComponent<PoolObject>(),
