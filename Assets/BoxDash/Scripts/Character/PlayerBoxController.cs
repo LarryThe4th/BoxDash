@@ -2,6 +2,7 @@
 using BoxDash.Tile;
 using BoxDash.Map;
 using BoxDash.Utility;
+using BoxDash.Score;
 using Random = UnityEngine.Random;
 
 namespace BoxDash.Player {
@@ -68,15 +69,15 @@ namespace BoxDash.Player {
         }
 
         public void Respawn(Location2D respawnLocation) {
-            PlayerLocation.SetLocation(respawnLocation.X, respawnLocation.Y);
-
             // Shut off the player box's physics
-            m_RigidBody = GetComponent<Rigidbody>();
+            if (!m_RigidBody)
+                m_RigidBody = GetComponent<Rigidbody>();
             m_RigidBody.useGravity = false;
             m_RigidBody.velocity = Vector3.zero;
-            // m_BoxCollider = GetComponent<BoxCollider>();
-            this.transform.rotation = TileBase.TileFixedQuaternion;
+            m_RigidBody.angularVelocity = Vector3.zero;
 
+            PlayerLocation.SetLocation(respawnLocation.X, respawnLocation.Y);
+            this.transform.rotation = TileBase.TileFixedQuaternion;
             MovePlayer(0, 0);
         }
 
@@ -163,13 +164,28 @@ namespace BoxDash.Player {
                 default:
                     break;
             }
+
+            // Set the score if we get a new record
+            int finalDistance = PlayerLocation.Y - MapManager.PlayerRespawnLocation.Y;
+            if (finalDistance > ScoreManager.Instance.GetData(ScoreManager.ScoreTypes.MaxDistance))
+            {
+                ScoreManager.Instance.SetNewData(ScoreManager.ScoreTypes.MaxDistance, finalDistance);
+            }
+
+            ScoreManager.Instance.SaveAll();
         }
 
         private void OnTriggerEnter(Collider other) {
-            if (other.tag == "Trap") {
+            if (other.tag == "Trap")
+            {
                 TileBase murder = other.GetComponentInParent<TileBase>();
                 if (murder.GetTileType() == TileTypes.FloorSpikes) EventCenter.OnGameOver(CauseOfGameOver.FloorSpikes);
                 else if (murder.GetTileType() == TileTypes.SkySpikes) EventCenter.OnGameOver(CauseOfGameOver.SkySpikes);
+            }
+            else if (other.tag == "Points") {
+                ScoreManager.Instance.SetNewData(ScoreManager.ScoreTypes.Credit, 1);
+                other.GetComponentInParent<CreditPoint>().OnGetPoint();
+                EventCenter.OnPlayerPickUpItem();
             }
         }
     }

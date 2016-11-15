@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using BoxDash.SaveAndLoad;
 using BoxDash.Utility;
 
-
 namespace BoxDash.Score
 {
     public class ScoreManager : Singleton<ScoreManager>
@@ -35,7 +34,7 @@ namespace BoxDash.Score
             }
         }
 
-        public void SetNewScore(ScoreTypes type, int addScore) {
+        public void SetNewData(ScoreTypes type, int addScore) {
             m_ScoreRecorder[type.ToString() + m_LastLoginPlayerName] += addScore;
         }
 
@@ -43,7 +42,7 @@ namespace BoxDash.Score
             return m_ScoreRecorder[type.ToString() + m_LastLoginPlayerName];
         }
 
-        public void SaveScore() {
+        public void SaveAll() {
             if (m_ScoreRecorder.Count == 0) return;
             foreach (var key in m_ScoreRecorder.Keys)
             {

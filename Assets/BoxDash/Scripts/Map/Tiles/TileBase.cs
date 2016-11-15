@@ -66,7 +66,7 @@ namespace BoxDash.Tile {
         }
         #endregion
 
-        #region Private variables
+        #region Protected variables
         protected Rigidbody m_RigidBody;
         protected List<Renderer> m_RendererComponents = new List<Renderer>();
         protected Animator m_Animator;

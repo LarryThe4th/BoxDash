@@ -64,12 +64,10 @@ namespace BoxDash.UI {
 
         public void PlayerPressLeft()
         {
-            Debug.Log("Here");
             PlayerInputHandler.OnPlayerInput(PlayerInputHandler.Direction.UpperLeft);
         }
 
         public void PlayerPressRight() {
-            Debug.Log("Here");
             PlayerInputHandler.OnPlayerInput(PlayerInputHandler.Direction.UpperRight);
         }
 
@@ -91,7 +89,6 @@ namespace BoxDash.UI {
             if (m_CurrentDistance == ScoreManager.Instance.GetData(ScoreManager.ScoreTypes.MaxDistance) + 1) {
                 ShowNewRecordNoitfication();
             }
-
             DistanceText.text = (m_CurrentDistance).ToString();
         }
 
@@ -106,6 +103,7 @@ namespace BoxDash.UI {
 
         private IEnumerator CountDown()
         {
+           // yield return new WaitForSeconds(1);
             m_Animator.SetBool("ShowCountDown", true);
             yield return new WaitForSeconds(1);
             while (m_CountDown-- > 0) {

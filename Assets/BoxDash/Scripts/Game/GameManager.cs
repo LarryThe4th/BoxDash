@@ -44,5 +44,9 @@ namespace BoxDash {
             // Reset the camera position.
             CameraController.Instance.Init();
         }
+
+        public void ResetGame() {
+            PlayerBoxController.PlayerInstance.Respawn(MapManager.PlayerRespawnLocation);
+        }
     }
 }

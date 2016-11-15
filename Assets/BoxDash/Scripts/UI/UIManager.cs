@@ -29,7 +29,6 @@ namespace BoxDash.UI
         }
 
         public void SwitchSceneUI(SceneUITransition transition) {
-
             switch (transition) {
                 case SceneUITransition.MainMenuToGame:
                     foreach (var ui in GetComponentsInChildren<SceneUIBase>())

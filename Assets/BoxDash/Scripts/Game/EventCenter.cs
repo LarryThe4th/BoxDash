@@ -33,6 +33,12 @@ namespace BoxDash
             if (GameStartEvent != null) GameStartEvent();
         }
 
+        public static OnEvent PlayerPickUpItemEvent;
+        public static void OnPlayerPickUpItem()
+        {
+            if (PlayerPickUpItemEvent != null) PlayerPickUpItemEvent();
+        }
+
         public static OnEvent UpdateUIEvent;
         public static void OnUpdateUI()
         {
