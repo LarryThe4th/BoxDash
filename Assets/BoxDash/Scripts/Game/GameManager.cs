@@ -13,6 +13,7 @@ namespace BoxDash {
         FallInHole,
         SkySpikes,
         FloorSpikes,
+        StupidAI,
     }
 
     /// <summary>
@@ -34,7 +35,7 @@ namespace BoxDash {
             // Initialize the player object.
             PlayerBoxController.Init();
 
-            PlayerBoxController.PlayerInstance.Respawn(MapManager.PlayerRespawnLocation);
+            PlayerBoxController.PlayerInstance.Respawn(MapManager.PlayerRespawnLocation, true);
 
             ScoreManager.Instance.Init(PlayerBoxController.GetPlayerName);
 
@@ -43,10 +44,20 @@ namespace BoxDash {
 
             // Reset the camera position.
             CameraController.Instance.Init();
+
+            // First time load in the game will not require count down 
+            EventCenter.OnGameStart();
         }
 
-        public void ResetGame() {
-            PlayerBoxController.PlayerInstance.Respawn(MapManager.PlayerRespawnLocation);
+        public void ResetGame(bool isAI = false, bool showCountDown = true) {
+            if (!isAI) StopAllCoroutines();
+
+            MapManager.Instance.Reset();
+
+            PlayerBoxController.PlayerInstance.Respawn(MapManager.PlayerRespawnLocation, isAI);
+
+            if (showCountDown)
+                EventCenter.StartGameCountDownEvent();
         }
     }
 }

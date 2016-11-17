@@ -4,6 +4,8 @@ using BoxDash.Map;
 using BoxDash.Utility;
 using BoxDash.Score;
 using Random = UnityEngine.Random;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace BoxDash.Player {
     /// <summary>
@@ -17,14 +19,14 @@ namespace BoxDash.Player {
         {
             EventCenter.GameStartEvent += OnGameStart;
             EventCenter.GameOverEvent += OnGameOver;
-            PlayerInputHandler.PlayerInputEvent += MoveBoxAndCheckIfMapNeedsUpdate;
+            PlayerInputHandler.PlayerInputEvent += PlayerMove;
         }
 
         private void OnDisable()
         {
             EventCenter.GameStartEvent -= OnGameStart;
             EventCenter.GameOverEvent -= OnGameOver;
-            PlayerInputHandler.PlayerInputEvent -= MoveBoxAndCheckIfMapNeedsUpdate;
+            PlayerInputHandler.PlayerInputEvent -= PlayerMove;
         }
         #endregion
 
@@ -40,6 +42,10 @@ namespace BoxDash.Player {
             get { return m_PlayerName; }
         }
 
+        public bool IsAI {
+            get { return m_PlayerIsAI; }
+        }
+
         public Location2D PlayerLocation = new Location2D();
         #endregion
 
@@ -51,6 +57,10 @@ namespace BoxDash.Player {
         // The player box facing direction.
         private PlayerInputHandler.Direction m_CurrentFacing = PlayerInputHandler.Direction.None;
         private int m_MoveUnit = 1;
+
+        private bool m_PlayerIsAI = false;
+        private float m_AIReactionTimer = 0;
+        private float[] m_AIReactionTimeRange = new float[2] { 5f, 12f };
         #endregion
 
         public static void Init()
@@ -68,7 +78,10 @@ namespace BoxDash.Player {
             PlayerInstance = player.GetComponent<PlayerBoxController>();
         }
 
-        public void Respawn(Location2D respawnLocation) {
+        public void Respawn(Location2D respawnLocation, bool isAI = false) {
+
+            StopCoroutine(WaitUntilNewGame(0));
+
             // Shut off the player box's physics
             if (!m_RigidBody)
                 m_RigidBody = GetComponent<Rigidbody>();
@@ -76,16 +89,18 @@ namespace BoxDash.Player {
             m_RigidBody.velocity = Vector3.zero;
             m_RigidBody.angularVelocity = Vector3.zero;
 
+            m_PlayerIsAI = isAI;
+
             PlayerLocation.SetLocation(respawnLocation.X, respawnLocation.Y);
             this.transform.rotation = TileBase.TileFixedQuaternion;
-            MovePlayer(0, 0);
+            UpdatePlayerLocation(0, 0);
         }
 
         private void OnGameStart() {
             // m_PlayerCanControl = true;
         }
 
-        private void MoveBoxAndCheckIfMapNeedsUpdate(PlayerInputHandler.Direction direction) {
+        private void PlayerMove(PlayerInputHandler.Direction direction) {
             switch (direction) {
                 case PlayerInputHandler.Direction.UpperLeft:
                     for (int i = 0; i < m_MoveUnit; i++)
@@ -95,10 +110,10 @@ namespace BoxDash.Player {
                         // Loop the index between 0 and LengthOfMapChunk * NumberOfMapChunk.
                         if (PlayerLocation.Y % 2 != 0)
                         {
-                            MovePlayer(1, 0);
+                            UpdatePlayerLocation(1, 0);
                         }
                         else {
-                            MovePlayer(1, -1);
+                            UpdatePlayerLocation(1, -1);
                         }
                     }
                     break;
@@ -109,21 +124,21 @@ namespace BoxDash.Player {
                         // if (PlayerLocation.Y % 2 != 0 && PlayerLocation.X == MapManager.Instance.GetMaximunTilesOnColnum - 2) break;
                         // Loop the index between 0 and LengthOfMapChunk * NumberOfMapChunk.
                         if (PlayerLocation.Y % 2 != 0) {
-                            MovePlayer(1, 1);
+                            UpdatePlayerLocation(1, 1);
                         }
                         else {
-                            MovePlayer(1, 0);
+                            UpdatePlayerLocation(1, 0);
                         }
                     }
                     break;
                 default:
                     // No way this will get call...
-                    MovePlayer(0, 0);
+                    UpdatePlayerLocation(0, 0);
                     break;
             }
         }
 
-        private void MovePlayer(int moveOnY, int moveOnX, PlayerInputHandler.Direction direction = PlayerInputHandler.Direction.None) {
+        private void UpdatePlayerLocation(int moveOnY, int moveOnX, PlayerInputHandler.Direction direction = PlayerInputHandler.Direction.None) {
             TileBase currentTile = MapManager.Instance.GetTile((PlayerLocation.Y + moveOnY), (PlayerLocation.X + moveOnX));
             // If the target tile is a wall or some kinda of trap that is blocking the path
             if (currentTile.CanPass == false || currentTile == null) return;
@@ -161,9 +176,15 @@ namespace BoxDash.Player {
                     // m_PlayerCanControl = false;
                     m_RigidBody.useGravity = true;
                     break;
+                case CauseOfGameOver.StupidAI:
+                    StartCoroutine(WaitUntilNewGame(2.0f));
+                    return;
                 default:
                     break;
             }
+
+            // Reset
+            m_PlayerIsAI = false;
 
             // Set the score if we get a new record
             int finalDistance = PlayerLocation.Y - MapManager.PlayerRespawnLocation.Y;
@@ -171,8 +192,14 @@ namespace BoxDash.Player {
             {
                 ScoreManager.Instance.SetNewData(ScoreManager.ScoreTypes.MaxDistance, finalDistance);
             }
-
             ScoreManager.Instance.SaveAll();
+        }
+
+        private IEnumerator WaitUntilNewGame(float wait)
+        {
+            yield return new WaitForSeconds(wait);
+            // Stop falling down.
+            GameManager.Instance.ResetGame(true, false);
         }
 
         private void OnTriggerEnter(Collider other) {
@@ -187,6 +214,22 @@ namespace BoxDash.Player {
                 other.GetComponentInParent<CreditPoint>().OnGetPoint();
                 EventCenter.OnPlayerPickUpItem();
             }
+        }
+
+        private void FixedUpdate()
+        {
+            if (m_PlayerIsAI) {
+                m_AIReactionTimer--;
+                if (m_AIReactionTimer <= 0) {
+                    PlayerMove(Random.Range(0, 2) == 0 ? 
+                        PlayerInputHandler.Direction.UpperLeft : 
+                        PlayerInputHandler.Direction.UpperRight);
+
+                    m_AIReactionTimer = Random.Range(m_AIReactionTimeRange[0], m_AIReactionTimeRange[1]);
+                }
+            }
+
+
         }
     }
 }

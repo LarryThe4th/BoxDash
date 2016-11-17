@@ -44,5 +44,11 @@ namespace BoxDash
         {
             if (UpdateUIEvent != null) UpdateUIEvent();
         }
+
+        public static OnEvent StartGameCountDownEvent;
+        public static void OnStartGameCountDown()
+        {
+            if (StartGameCountDownEvent != null) StartGameCountDownEvent();
+        }
     }
 }

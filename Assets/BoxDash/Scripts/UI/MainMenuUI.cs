@@ -33,9 +33,11 @@ namespace BoxDash.UI
 
         private void OnPressPlayGameButton() {
             UIManager.Instance.SwitchSceneUI(UIManager.SceneUITransition.MainMenuToGame);
+            GameManager.Instance.ResetGame(false, false);
         }
 
         private void OpeningSequence() {
+            // Empty
         }
 
         public override void HideUI()

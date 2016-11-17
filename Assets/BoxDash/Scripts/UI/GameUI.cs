@@ -11,11 +11,15 @@ namespace BoxDash.UI {
         #region Event
         private void OnEnable()
         {
+            EventCenter.GameOverEvent += OnGameOver;
+            EventCenter.StartGameCountDownEvent += StartCountDown;
             EventCenter.PlayerMovedOnMapEvent += UpdateDistanceScore;
         }
 
         private void OnDisable()
         {
+            EventCenter.GameOverEvent -= OnGameOver;
+            EventCenter.StartGameCountDownEvent -= StartCountDown;
             EventCenter.PlayerMovedOnMapEvent -= UpdateDistanceScore;
         }
         #endregion
@@ -40,6 +44,15 @@ namespace BoxDash.UI {
         [SerializeField]
         private Text NewRecordNoitfication;
 
+        [SerializeField]
+        private Button PauseButton;
+
+        [SerializeField]
+        private Button RestartGameButton;
+        [SerializeField]
+        private Button BackToMainMenuButton;
+
+
         private const int m_MaximunCountDown = 5;
         private int m_CountDown = m_MaximunCountDown;
         #endregion
@@ -53,6 +66,8 @@ namespace BoxDash.UI {
             if (!CountDownText) Debug.Log("The CountDown Text not set.");
             if (!DistanceText) Debug.Log("The Distance Text not set.");
             if (!NewRecordNoitfication) Debug.Log("The NewRecordNoitfication Text not set.");
+            if (!RestartGameButton) Debug.Log("The RestartGame Button not set.");
+            if (!BackToMainMenuButton) Debug.Log("The RestartGame Button not set.");
 #endif
             LeftButton.onClick.AddListener(delegate { PlayerPressLeft(); });
             RightButton.onClick.AddListener(delegate { PlayerPressRight(); });
@@ -60,6 +75,9 @@ namespace BoxDash.UI {
             m_CurrentDistance = 0;
             DistanceText.text = m_CurrentDistance.ToString();
             NewRecordNoitfication.enabled = false;
+
+            RestartGameButton.onClick.AddListener(delegate { OnPressRestartGame(); });
+            BackToMainMenuButton.onClick.AddListener(delegate { OnPressBackToMainMenu(); });
         }
 
         public void PlayerPressLeft()
@@ -67,20 +85,42 @@ namespace BoxDash.UI {
             PlayerInputHandler.OnPlayerInput(PlayerInputHandler.Direction.UpperLeft);
         }
 
-        public void PlayerPressRight() {
+        public void PlayerPressRight()
+        {
             PlayerInputHandler.OnPlayerInput(PlayerInputHandler.Direction.UpperRight);
         }
 
-        public override void HideUI() {
+        public override void HideUI()
+        {
             base.HideUI();
             m_Animator.SetBool("HitNewRecord", false);
             m_Animator.SetBool("ShowGameUI", false);
         }
 
-        public override void ShowUI() {
+        public override void ShowUI()
+        {
             base.ShowUI();
             m_Animator.SetBool("ShowGameUI", true);
             StartCountDown();
+        }
+
+        private void OnGameOver(CauseOfGameOver cause)
+        {
+            m_Animator.SetBool("ShowGameOver", true);
+        }
+
+        private void OnPressRestartGame() {
+            m_Animator.SetBool("ShowGameOver", false);
+            // Reset
+            m_CurrentDistance = 0;
+            m_Animator.SetBool("HitNewRecord", false);
+            GameManager.Instance.ResetGame(false);
+        }
+
+        private void OnPressBackToMainMenu() {
+            m_Animator.SetBool("ShowGameOver", false);
+            GameManager.Instance.ResetGame();
+            UIManager.Instance.SwitchSceneUI(UIManager.SceneUITransition.GameToMainMenu);
         }
 
         public void UpdateDistanceScore(TileBase tile) {
@@ -98,6 +138,7 @@ namespace BoxDash.UI {
 
         #region Count Down
         public void StartCountDown() {
+            CountDownText.text = m_MaximunCountDown.ToString();
             StartCoroutine(CountDown());
         }
 

@@ -4,7 +4,6 @@ using Random = UnityEngine.Random;
 using BoxDash.Tile;
 using BoxDash.Player;
 using BoxDash.Utility;
-using System;
 
 namespace BoxDash.Map
 {
@@ -81,7 +80,7 @@ namespace BoxDash.Map
         private int m_Timer = 0;
         // The time limit for the timer. 
         // Samller the number, faster the track will collapse,
-        private int m_TimeBetweenCollapse = 10;
+        private int m_TimeBetweenCollapse = 8;
         // The collapsing row's index in the tile pool.
         private int m_CollapseRowIndex = 0;
         // Keep tracking how many tracks are collapsed.
@@ -100,6 +99,44 @@ namespace BoxDash.Map
         private const int m_ChanceIncreasePreUpdate_SkySpikes = 1;
         private const int m_MaximunChanceOfSkySpikes = 70;
         #endregion
+        #endregion
+
+
+        #region Public methods
+        public void Reset() {
+            m_PlayerPassedTrackCount = 0;
+            m_SafePathTileColumnIndex = 0;
+
+            // Reset obstacles generate chance
+            m_ChanceOfHole = 0;
+            m_ChanceOfFloorSpikes = m_MaximunChanceOfHole;
+            m_ChanceOfSkySpikes = m_MaximunChanceOfFloorSpikes;
+
+            // Reset tile collapsing function
+            m_Timer = 0;
+            m_KeepCollapsing = false;
+            m_CollapseRowIndex = 0;
+            m_CurrentCollapsingTrackCount = 0;
+
+            // Reset tracks
+            ResetOldTrack(-1);
+            ResetOldTrack(0);
+        }
+
+        /// <summary>
+        /// Get the specific tile in the track.
+        /// </summary>
+        /// <param name="rowIndex">The actul row index of the track.</param>
+        /// <param name="columnIndex">The index on column.</param>
+        /// <returns></returns>
+        public TileBase GetTile(int rowIndex, int columnIndex)
+        {
+            // Check if the out if range
+            if (rowIndex < 0 && (columnIndex <= 0 && columnIndex == MaxNumberOfTilesOnColumn)) return null;
+            // Since there only 2 tracks exist, we have to find out witch one the player box is on.
+            int trackIndex = (rowIndex % (LengthOfPreTrack * NumberOfPreGenerateTracks)) < LengthOfPreTrack ? 0 : 1;
+            return m_TilePool[trackIndex, rowIndex % LengthOfPreTrack][columnIndex];
+        }
         #endregion
 
         #region Private methods
@@ -206,7 +243,15 @@ namespace BoxDash.Map
                     break;
                 case TileTypes.Hole:
                     // Whpoos..
-                    EventCenter.OnGameOver(CauseOfGameOver.FallInHole);
+                    if (PlayerBoxController.PlayerInstance.IsAI)
+                    {
+                        EventCenter.OnGameOver(CauseOfGameOver.StupidAI);
+                    }
+                    else {
+                        EventCenter.OnGameOver(CauseOfGameOver.FallInHole);
+                    }
+
+                    
                     return;
                 case TileTypes.FloorSpikes:
                     currentTile.UseTile(
@@ -321,13 +366,14 @@ namespace BoxDash.Map
             // If the requested index is out of the list's range, 
             // add a new slot for this tile.
             if ((index + 1) > theRow.Count) {
+                tile.EnableObject(true);
                 theRow.Add(tile);
             }
             // Else overwrite the exist data.
             else {
-                //if (tile.GetTileType() != TileTypes.Wall) {
-                //    theRow[index].EnableObject(false);
-                //} 
+                if (theRow[index] != tile && theRow[index].GetTileType() != TileTypes.Wall) {
+                    theRow[index].EnableObject(false);
+                }
                 theRow[index] = tile;
             }
         }
@@ -396,11 +442,20 @@ namespace BoxDash.Map
         private void OnTileCollapse(TileBase tile) {
             tile.Collapse();
             if (PlayerBoxController.PlayerInstance.PlayerLocation.Y == tile.CurrentLocation.Y) {
-                // Hide the tile right under the player box so user can clear see how it falls.
-                tile.EnableObject(false);
-                // Stop further collapsing.
-                m_KeepCollapsing = false;
-                EventCenter.GameOverEvent(CauseOfGameOver.OnCollapsedTile);
+                if (PlayerBoxController.PlayerInstance.PlayerLocation.X == tile.CurrentLocation.X)
+                {
+                    // Hide the tile right under the player box so user can clear see how it falls.
+                    tile.EnableObject(false);
+                    // Stop further collapsing.
+                    m_KeepCollapsing = false;
+
+                    if (PlayerBoxController.PlayerInstance.IsAI) {
+                        EventCenter.GameOverEvent(CauseOfGameOver.StupidAI);
+                    }
+                    else{
+                        EventCenter.GameOverEvent(CauseOfGameOver.OnCollapsedTile);
+                    }
+                }
             }
         }
 
@@ -441,20 +496,5 @@ namespace BoxDash.Map
         #endregion
 
         #endregion
-
-        /// <summary>
-        /// Get the specific tile in the track.
-        /// </summary>
-        /// <param name="rowIndex">The actul row index of the track.</param>
-        /// <param name="columnIndex">The index on column.</param>
-        /// <returns></returns>
-        public TileBase GetTile(int rowIndex, int columnIndex)
-        {
-            // Check if the out if range
-            if (rowIndex < 0 && (columnIndex <= 0 && columnIndex == MaxNumberOfTilesOnColumn)) return null;
-            // Since there only 2 tracks exist, we have to find out witch one the player box is on.
-            int trackIndex = (rowIndex % (LengthOfPreTrack * NumberOfPreGenerateTracks)) < LengthOfPreTrack ? 0 : 1;
-            return m_TilePool[trackIndex, rowIndex % LengthOfPreTrack][columnIndex];
-        }
     }
 }
